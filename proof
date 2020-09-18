@@ -1,0 +1,170 @@
+-- Note : if xss is empty, both evaluate to bottom
+
+thm 1.
+foldl (zipWith (++)) (head xss) (tail xss)
+  == {lem 1,  associativity of (zipWith (++))}
+foldr1 (zipWith (++)) xss
+
+
+lem 1.
+  -- given that f is associative, and xs is a finite list, foldl f x xs == foldr1 f (x:xs)
+Inductive hypothesis:
+    foldl f y ys == foldr1 f (y:ys)
+case 1.
+foldl f x []
+  == {def foldl}
+x
+  == {def foldr1}
+foldr1 f (x:[])
+
+case 2.
+foldl f x (y:ys)
+  == {def foldl}
+foldl (f x y) ys
+  == {lem 1.1, f assoc}
+f x (foldl y ys)
+  == {Ind Hyp}
+f x (foldr1 (y:ys))
+  == {def foldr1}
+foldr1 f (x:y:ys)
+
+
+lem 1.1.
+  -- given that f is associative, and ys is a finite list  foldl f (f x y) ys == f x (foldl y ys)
+Inductive hypothesis:
+    foldl f (f x y) zs == f x (foldl f y zs)
+case 1.
+foldl f (f x y) (z:zs)
+  == {def foldl}
+foldl f (f (f x y) z) zs
+  == {associativity of f}
+foldl f (f x (f y z)) zs
+  == {Ind Hyp}
+f x (foldl f (f y z) zs)
+  == {def foldl}
+f x (foldl f y (z:zs))
+
+case 2.
+foldl f (f x y) []
+  == {def foldl}
+f x y
+  == {def foldl}
+f x (foldl y [])
+
+
+-- Note - The cases involving bottom rely on my assumptions about how ghc works,
+--  of which I am not completely certain. However, they only matter if you care
+--  about infinite lists or passing lists which result in an error when evaluating completely
+lem 2. (associativity of zipWith (++))
+Inductive hypothesis:
+  zipWith (++) xs (zipWith (++) ys zs)
+    for xs ys and zs substructures of the arguments in consideration
+
+case 1.
+zipWith (++) (x:xs) (zipWith (++) (y:ys) (z:zs))
+  == {def zipWith}
+zipWith (++) (x:xs) ((y ++ z) : zipWith (++) ys zs)
+  == {def zipWith}
+(x ++ (y ++ z)) : zipWith (++) xs (zipWith (++) ys zs)
+  == {Ind Hyp}
+(x ++ (y ++ z)) : zipWith (++) (zipWith (++) xs ys) zs
+  == {lem 3. associativity of (++)}
+((x ++ y) ++ z) : zipWith (++) (zipWith (++) xs ys) zs
+  == {def zipWith}
+zipWith (++) ((x ++ y) : zipWith (++) xs ys) (z:zs)
+  == {def zipWith}
+zipWith (++) (x:xs) (zipWith (++) (y:ys) (z:zs))
+
+
+case 2.
+zipWith (++) [] (zipWith (++) ys zs)
+  == {def zipWith}
+[]
+  == {def zipWith}
+zipWith (++) [] zs
+  == {def zipWith}
+zipWith (++) (zipWith (++) [] ys) zs
+
+
+case 3.
+zipWith (++) (x:xs) (zipWith (++) [] zs)
+  == {def zipWith}
+zipWith (++) (x:xs) []
+  == {def zipWith}
+[]
+  == {def zipWith}
+zipWith (++) [] zs
+  == {def zipWith}
+zipWith (++) (zipWith (++) (x:xs) []) zs
+
+case 4.
+zipWith (++) (x:xs) (zipWith (++) (y:ys) [])
+  == {def zipWith}
+zipWith (++) (x:xs) []
+  == {def zipWith}
+[]
+  == {def zipWith}
+zipWith (++) ((x++y) : zipWith (++) xs ys) []
+  == {def zipWith}
+zipWith (++) (zipWith (++) (x:xs) (y:ys)) []
+
+case 5.
+zipWith (++) ⊥ (zipWith (++) ys zs)
+  == {def zipWith}
+⊥
+  == {def zipWith}
+zipWith (++) ⊥ zs
+  == {def zipWith}
+zipWith (++) (zipWith (++) ⊥ ys) zs
+
+case 6.
+zipWith (++) (x:xs) (zipWith (++) ⊥ zs)
+  == {def zipWith}
+⊥
+  == {def zipWith}
+zipWith (++) ⊥ zs
+  == {def zipWith}
+zipWith (++) (zipWith (++) (x:xs) ⊥) zs
+
+case 7.
+zipWith (++) (x:xs) (zipWith (++) (y:ys) ⊥)
+  == {def zipWith}
+zipWith (++) (x:xs) ⊥
+  == {def zipWith}
+⊥
+  == {def zipWith}
+zipWith (++) ((x++y) : zipWith (++) xs ys) ⊥
+  == {def zipWith}
+zipWith (++) (zipWith (++) (x:xs) (y:ys)) ⊥
+
+
+
+Definitions:
+-- Note that these are not the same as the ones in Data.List/Prelude,
+-- Those contain various optimisations that make proving things with them harder.
+
+foldl :: (a -> b -> a) -> [b] -> a
+foldl f e [] =  e
+foldl f e (x:xs) =  foldl f (f e x) xs
+
+
+foldr1 :: (a -> a -> a) -> [a] -> a
+foldr1 f [x]            =  x
+foldr1 f (x:xs)         =  f x (foldr1 f  xs)
+
+zipWith f (a:as) (b:bs) = f a b : zipWith as bs
+zipWith f _ _ = []
+
+
+-- I believe the above is equivalent to the below
+-- zipWith f (a:as) bs = case bs of
+--  (b:bs') -> f a b : zipWith as bs'
+--  []      -> []
+-- zipWith f [] _ = []
+
+
+(++) :: [a] -> [a] -> [a]
+[] ++ ys = ys
+(x:xs) ++ ys = x: (xs ++ ys)
+
+associativity of (++) is left as a exercise to the reader
