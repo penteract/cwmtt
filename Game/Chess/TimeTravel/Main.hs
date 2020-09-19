@@ -8,6 +8,7 @@ import Game.Chess.TimeTravel.Datatypes
 import Game.Chess.TimeTravel.Moves
 
 import System.IO
+import Data.List
 
 main = do
   --interact (show . getTurnSequence . preproc)
@@ -21,7 +22,7 @@ main = do
 loop g s = do
   putStr$ drawState g s
   let lms = legalMoveSets s
-  putStrLn$unlines $ map show (zip [0..] lms)
+  putStrLn$unlines $ zipWith (\ n m -> show n ++ ". " ++ intercalate ";" (map (displayMove s) m) ) [0..] lms
   putStr "Enter a move number:"
   hFlush stdout
   n <- readLn

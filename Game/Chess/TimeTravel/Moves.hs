@@ -12,7 +12,7 @@ import Game.Chess.TimeTravel.Datatypes
 import Game.Chess.TimeTravel.Utils
 
 -- Debugging
-import Game.Chess.TimeTravel.Printing
+-- import Game.Chess.TimeTravel.Printing
 import Game.Chess.TimeTravel.Layouts
 
 
@@ -138,7 +138,7 @@ addBoardFull :: State -> ((Int,Int),Board) -> State
 addBoardFull s@(n,wtls,btls,col) ((l,t),b) = let t' = nextT t col in case getBoard (flipPlayer s) (l,t') of
   Just _ -> case col of
     White -> (n+1, (t',[]):wtls, (t',[b]):btls, col)
-    Black -> (n+1, (t',[b]):wtls, (t ,[]):btls, col)
+    Black -> (n, wtls++[(t',[b])], btls++[(t ,[])], col)
   Nothing -> addBoard s l b
 
 nextT :: Int -> Player -> Int

@@ -13,8 +13,6 @@ build-type:          Simple
 cabal-version:       >=1.10
 
 library
---  hs-source-dirs:
---      src
   exposed-modules:
       Game.Chess.TimeTravel.Moves
     , Game.Chess.TimeTravel.Datatypes

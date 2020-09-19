@@ -9,7 +9,7 @@ import Data.Char
 
 type Parser a = String -> Maybe (a,String)
 
-data MoveSetP = MSP {
+data MoveSetPartial = MSP {
     number :: Maybe Int -- number of moves previously played by the player + 1
   , tnumber :: Maybe Int -- T index of the present at start of turn
   , player :: Maybe Player
@@ -74,7 +74,7 @@ preproc (c:rs)
   | otherwise  =  c:preproc rs
 
 -- throws an error on parse failure
-getTurnSequence :: String -> [MoveSetP]
+getTurnSequence :: String -> [MoveSetPartial]
 getTurnSequence s = case (parseTurnSeparator >>$ const parseTurn) ('\n':s) of
   Just (msp,rs) -> msp : getTurnSequence rs
   Nothing -> case eatNewLines s of
@@ -93,13 +93,13 @@ parseTurnSeparator2 :: Parser ()
 parseTurnSeparator2 ('\n':rs) = parseTurnSeparator2 rs
 parseTurnSeparator2 rs = Just ((), rs)
 
-parseTurn :: Parser MoveSetP
+parseTurn :: Parser MoveSetPartial
 parseTurn = parseTurnNumber >>$ \ f ->
   parseMoveList >>$ \ mvs ->
   parseCheck >>$ \ chk ->
   ret (f mvs chk)
 
-parseTurnNumber :: Parser ([MoveP] -> CheckData -> MoveSetP)
+parseTurnNumber :: Parser ([MoveP] -> CheckData -> MoveSetPartial)
 parseTurnNumber = (justify parseNat >>$ \ n ->
   justify (get "w" White <?> get "b" Black) >>$ \ p ->
   parseT >>$ \ (t,trel) ->
