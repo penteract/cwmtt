@@ -52,8 +52,8 @@ sample2:
 2.   Qb3 / N>>T1g6
 3T2. Qb3;- / c6;_
 4.   Qc4;Qc4 / B>>T1c6;Nh6
-5T2. 0LT4Q>>xf7 /
-6T1. Kxf7;-;_;_
+5wT2. 0LT4Q>>xf7 /
+5bT1. Kxf7;-;_;_
 6.   e3;_;-;d4 / Qe8;-;_;Nf6
 7.   Qh4;-;_;Qb3 #
 ```
