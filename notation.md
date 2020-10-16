@@ -44,8 +44,6 @@ sample:
 
 Note: if more than 1 timeline is created in a single turn, then order matters, so you must specify something
 
-¹You may not specify the L coordinate of the destination of a same board jump.
-For a same board jump, if L or T is given for the source, then rank must also be given for the source.
 
 
 sample2:
@@ -69,3 +67,7 @@ Technical details (incomplete):
 - Comments go from '?' to newline (and don't remove the newline)
 - Jumps creating a new timeline use `>>`. Jumps between timelines(hops) use `>` and the destination timeline may be marked with '<'
 - When multiple timelines are created in a different order, the starting timelines of pieces must be given.
+
+
+¹You may not specify the L coordinate of the destination of a same board jump.
+For a same board jump, if L or T is given for the source, then rank must also be given for the source.
