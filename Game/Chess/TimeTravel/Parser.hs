@@ -67,8 +67,8 @@ get (a:as) x (b:bs) = if a==b then get as x bs else Nothing
 preproc :: String -> String
 preproc [] = []
 preproc ('?':rs) = skipToNL rs
-  where skipToNL ('\n':rs) = ('\n':preproc rs)
-        skipToNL (c:rs) = skipToNL rs
+  where skipToNL ('\n':rs') = '\n':preproc rs'
+        skipToNL (_:rs') = skipToNL rs'
 preproc (c:rs)
   | isSpace c && c/='\n'  =  preproc rs
   | otherwise  =  c:preproc rs
@@ -79,7 +79,7 @@ getTurnSequence s = case (parseTurnSeparator >>$ const parseTurn) ('\n':s) of
   Just (msp,rs) -> msp : getTurnSequence rs
   Nothing -> case eatNewLines s of
     Just ((),"") -> []
-    Just ((),s) -> error ("Parsing failed - next 20 characters: " ++ show (take 20 s))
+    Just ((),rs) -> error ("Parsing failed - next 20 characters: " ++ show (take 20 rs))
 
 parseTurnSeparator :: Parser ()
 parseTurnSeparator ('\n':rs) = parseTurnSeparator1 rs
@@ -100,11 +100,11 @@ parseTurn = parseTurnNumber >>$ \ f ->
   ret (f mvs chk)
 
 parseTurnNumber :: Parser ([MoveP] -> CheckData -> MoveSetPartial)
-parseTurnNumber = (justify parseNat >>$ \ n ->
+parseTurnNumber = justify parseNat >>$ \ n ->
   justify (get "w" White <?> get "b" Black) >>$ \ p ->
   parseT >>$ \ (t,trel) ->
   if trel then parseFail else
-  (if (n,p,t)==(Nothing,Nothing,Nothing) then ret else get ".") (MSP n t p))
+  (if (n,p,t)==(Nothing,Nothing,Nothing) then ret else get ".") (MSP n t p)
 
 parseMoveList :: Parser [MoveP]
 parseMoveList = parseMove >>$ (\ mv ->
@@ -125,21 +125,20 @@ parseMove = get "-" Pass
   <?> get "_" NotTurn
   <?> (MoveFrom $$ parseMoveData)
 
--- Move = Piecename? Sourceposition? Jumpspec? 'x'? Destposition Checkspec?
+-- Move = Sourceposition? Piecename? Jumpspec? 'x'? Destposition Checkspec?
 parseMoveData :: Parser MoveData
-parseMoveData = (parsePiece <?> ret Pawn) >>$ \ p ->
-  (parseMoveWithSource <?> parseMoveNoSource) >>$ \ m ->
-  ret m{piece=Just p}
+parseMoveData = parseMoveWithSource <?> parseMoveNoSource
 
 parseMoveWithSource :: Parser MoveData
 parseMoveWithSource =  parseSource >>$ \ pos ->
     parseMoveNoSource >>$ \ md -> ret md{source=pos}
 
 parseMoveNoSource :: Parser MoveData
-parseMoveNoSource = parseJT >>$ \ jt ->
+parseMoveNoSource = (parsePiece <?> ret Pawn) >>$ \ p ->
+  parseJT >>$ \ jt ->
   get "x" True <?> ret False >>$ \ caps ->
   parseDest >>$ \ (pos,rel) ->
-  ret (MD Nothing unknownPos jt caps pos rel)
+  ret (MD (Just p) unknownPos jt caps pos rel)
 
 parseCheck :: Parser CheckData
 parseCheck = get "+" (Check []) <?> get "#" (Mate []) <?> ret Nocheck
@@ -148,7 +147,7 @@ parseJT :: Parser JumpType
 parseJT = get ">>" Branching <?> get ">" Hop <?> ret SingleBoard
 
 
--- Destposition = (n'L'|'l')?('T'|'t'n)? Rank File
+-- Destposition = (n'L'|'l')?('T'|'t'n)? File Rank
 parseDest :: Parser (PartialPos,(Bool,Bool))
 parseDest = parseL >>$ \ (l,lrel) ->
   parseT >>$ \ (t,trel) ->
@@ -170,14 +169,14 @@ parseT = (
   ) <?> ret (Nothing,False)
 
 
--- Sourceposition = (n'L'|'l')?('T'|'t'n)? Rank? File?
+-- Sourceposition = (n'L'|'l')?('T'|'t'n)? File? Rank?
 parseSource :: Parser PartialPos
 parseSource = parseL >>$ \ (l,lrel) ->
   if lrel then parseFail else
   parseT >>$ \ (t,trel) ->
   if trel then parseFail else
-  (justify parseFile) >>$ \ x ->
-  (justify parseRank) >>$ \ y ->
+  justify parseFile >>$ \ x ->
+  justify parseRank >>$ \ y ->
   ret (l,t,x,y)
 
 parseFile :: Parser Int
@@ -202,7 +201,7 @@ parsePiece _ = Nothing
 
 -- leading 0s not allowed
 parseInt :: Parser Int
-parseInt ('-':n) = first negate <$> (parseNat n)
+parseInt ('-':n) = first negate <$> parseNat n
 parseInt ('+':n) = parseNat n
 parseInt n = parseNat n
 
