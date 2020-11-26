@@ -20,6 +20,7 @@ library
     , Game.Chess.TimeTravel.Layouts
     , Game.Chess.TimeTravel.Parser
     , Game.Chess.TimeTravel.Printing
+    , Game.Chess.TimeTravel.BuildGame
   build-depends:
       base
     , containers

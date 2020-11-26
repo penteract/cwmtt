@@ -2,6 +2,7 @@ module Game.Chess.TimeTravel.Parser
 where
 
 import Game.Chess.TimeTravel.Datatypes
+import Game.Chess.TimeTravel.Utils
 
 import Control.Applicative
 import Control.Arrow
@@ -22,7 +23,7 @@ type PartialPos =  (Maybe Int, Maybe Int, Maybe Int, Maybe Int)
 unknownPos :: PartialPos
 unknownPos = (Nothing,Nothing,Nothing,Nothing)
 
-data JumpType = SingleBoard | Hop | Branching deriving (Eq,Show)
+data JumpType = SingleBoard | Hopping | Branching deriving (Eq,Show)
 
 data MoveP = Pass | NotTurn | MoveFrom MoveData | Arrive deriving (Eq,Show)
 
@@ -69,17 +70,18 @@ preproc [] = []
 preproc ('?':rs) = skipToNL rs
   where skipToNL ('\n':rs') = '\n':preproc rs'
         skipToNL (_:rs') = skipToNL rs'
+        skipToNL [] = []
 preproc (c:rs)
   | isSpace c && c/='\n'  =  preproc rs
   | otherwise  =  c:preproc rs
 
 -- throws an error on parse failure
-getTurnSequence :: String -> [MoveSetPartial]
+getTurnSequence :: String -> Result String MoveSetPartial
 getTurnSequence s = case (parseTurnSeparator >>$ const parseTurn) ('\n':s) of
-  Just (msp,rs) -> msp : getTurnSequence rs
+  Just (msp,rs) -> Cons msp (getTurnSequence rs)
   Nothing -> case eatNewLines s of
-    Just ((),"") -> []
-    Just ((),rs) -> error ("Parsing failed - next 20 characters: " ++ show (take 20 rs))
+    Just ((),"") -> Nil
+    Just ((),rs) -> Fail ("Parsing failed - next 20 characters: " ++ show (take 20 rs))
 
 parseTurnSeparator :: Parser ()
 parseTurnSeparator ('\n':rs) = parseTurnSeparator1 rs
@@ -94,7 +96,7 @@ parseTurnSeparator2 ('\n':rs) = parseTurnSeparator2 rs
 parseTurnSeparator2 rs = Just ((), rs)
 
 parseTurn :: Parser MoveSetPartial
-parseTurn = parseTurnNumber >>$ \ f ->
+parseTurn = (parseTurnNumber <?> ret (MSP Nothing Nothing Nothing)) >>$ \ f ->
   parseMoveList >>$ \ mvs ->
   parseCheck >>$ \ chk ->
   ret (f mvs chk)
@@ -120,10 +122,10 @@ eatNewLines ('\n':rs) = eatNewLines rs
 eatNewLines rs = Just ((),rs)
 
 parseMove :: Parser MoveP
-parseMove = get "-" Pass
+parseMove = (MoveFrom $$ parseMoveData)
+  <?> get "-" Pass
   <?> get "<" Arrive
   <?> get "_" NotTurn
-  <?> (MoveFrom $$ parseMoveData)
 
 -- Move = Sourceposition? Piecename? Jumpspec? 'x'? Destposition Checkspec?
 parseMoveData :: Parser MoveData
@@ -144,7 +146,7 @@ parseCheck :: Parser CheckData
 parseCheck = get "+" (Check []) <?> get "#" (Mate []) <?> ret Nocheck
 
 parseJT :: Parser JumpType
-parseJT = get ">>" Branching <?> get ">" Hop <?> ret SingleBoard
+parseJT = get ">>" Branching <?> get ">" Hopping <?> ret SingleBoard
 
 
 -- Destposition = (n'L'|'l')?('T'|'t'n)? File Rank

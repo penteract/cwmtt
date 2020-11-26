@@ -11,17 +11,12 @@ import Data.Maybe
 import Game.Chess.TimeTravel.Datatypes
 import Game.Chess.TimeTravel.Utils
 
--- Debugging
--- import Game.Chess.TimeTravel.Printing
-import Game.Chess.TimeTravel.Layouts
-
-
 
 legalMoveSets :: State -> [MoveSet]
 legalMoveSets s = do -- list monad
   -- get possible moves from the first playable board (including "pass/arrive")
   let pbs = playableBoards s
-  let bmts = [(l,[(m,getType pbs m) | m <- []:legalMovesInBoard s pb ]) | pb@(l,t) <- pbs]
+  let bmts = [(l,[(m,getType pbs m) | m <- []:legalMovesFromBoard s pb ]) | pb@(l,t) <- pbs]
   unorderedmoveset <- findLegal1 [] [] bmts
   True <- return (mightMoveTime unorderedmoveset s)
   perm <- validPermutations unorderedmoveset
@@ -30,10 +25,11 @@ legalMoveSets s = do -- list monad
   True <- return$ correctTurn s'
   return perm
 
+-- TODO: account for games with an even number of starting timelines
 correctTurn :: State -> Bool
 correctTurn s@(nw,wtls,btls,col) =
   let nb = length wtls - nw - 1
-      nactive = (min nb nw) + 1
+      nactive = min nb nw + 1
       (wtls',btls') = unzip $ take (nw + 1 + nactive) $ drop (nw - nactive) (zip wtls btls)
       wt = minimum (map fst wtls')
       bt = minimum (map fst btls')
@@ -106,34 +102,32 @@ findLegal1 [] acc [] = [acc]
 findLegal1 nojumps acc [] = error "If there's an incomplete cycle, there should be unprocessed boards"
 
 
-
 -- NoAct means either do nothing because the present is behind/moving backwards or that a piece is moved to this board by a hop
 -- Hop means either a hop or a branch to a board that must be played on as part of this moveset
-data MoveType = NoAct | SameBoard | Hop Int | Branch deriving (Eq)
+data MoveType = NoAct | SameBoard | Hop Int | Branch deriving (Eq,Show)
 
 getType :: [(Int,Int)] -> Move -> MoveType
 getType _ [] = NoAct
-getType pbs (((l1,t1,_,_),(l2,t2,_,_)):mvs) = if (l1,t1)==(l2,t2) then SameBoard
-  else if (l2,t2) `elem` pbs then Hop l2 else Branch
+getType pbs (((l1,t1,_,_),(l2,t2,_,_)):mvs)
+  | (l1,t1)==(l2,t2)   = SameBoard
+  | (l2,t2) `elem` pbs = Hop l2
+  | otherwise          = Branch
 
-passMove :: (Int,Int) -> Move
-passMove (l,t) = []--[((l,t,0,0),(l,t,0,0))]
 
-
-legalMovesInBoard :: State -> (Int,Int) -> [Move]
-legalMovesInBoard s@(_,_,_,playerCol) (l,t) = do
-  m <- movesInBoard s (l,t)
+legalMovesFromBoard :: State -> (Int,Int) -> [Move]
+legalMovesFromBoard s@(_,_,_,playerCol) (l,t) = do
+  m <- movesFromBoard s (l,t)
   let t' = nextT t playerCol
   if isKnownCheck (halfApply m s) (Just (l,t')) then [] else return m
 
--- Apply a moveset to a
+-- | Apply a moveset to a state and change the player
 apply :: MoveSet -> State -> State
 apply mvs s = flipPlayer$ foldl' fullMove s mvs
 
 fullMove :: State -> Move -> State
 fullMove s m = foldl' addBoardFull s (foldl' (fullMove' s) [] m)
 
--- Add a board, making a new timeline if needed
+-- | Add a board, making a new timeline if needed
 addBoardFull :: State -> ((Int,Int),Board) -> State
 addBoardFull s@(n,wtls,btls,col) ((l,t),b) = let t' = nextT t col in case getBoard (flipPlayer s) (l,t') of
   Just _ -> case col of
@@ -157,8 +151,9 @@ fullMove' s modifiedBoards ((l,t,x,y),(l',t',x',y')) =
 update :: Eq a => a -> b -> [(a,b)] -> [(a,b)]
 update x y xys =  (x,y) : filter ((/=x).fst) xys
 
--- NOTE: relies on the assumption that fpr moves with multiple parts, all parts
+-- NOTE: relies on the assumption that for moves with multiple parts, all parts
 -- originate from the same board
+-- | Apply a move's effect to only the source board of the move
 halfApply :: Move -> State -> State
 halfApply mvs@(((l,t,_,_),_):_) s = flipPlayer (addBoard s l (foldl' halfMove (fromJust$ getBoard s (l,t)) mvs))
 
@@ -169,6 +164,7 @@ halfMove :: Board -> (Coords, Coords) -> Board
 halfMove b ((l,t,x,y),(l',t',x',y')) = let (p,b') = removePiece (x,y) b in
   if (l',t')==(l,t) then placePiece (setMoved p) (x',y') b' else b'
 
+-- | Add a board to a timeline that already exists
 addBoard :: State -> Int -> Board -> State
 addBoard (n,wtls,btls,White) l b = (n,wtls,modifyAt btls (n-l) ((+1)*** (b:)), White)
 addBoard (n,wtls,btls,Black) l b = (n,modifyAt wtls (n-l) ((+1)*** (b:)), btls, Black)
@@ -193,8 +189,8 @@ setMoved :: Cell -> Cell
 setMoved (Full (c,p,Still)) = Full (c,p,Moved)
 setMoved x = x
 
-movesInBoard :: State -> (Int,Int) -> [Move]
-movesInBoard s@(_,_,_,playerCol) (l,t) = let Just b = getBoard s (l,t) in
+movesFromBoard :: State -> (Int,Int) -> [Move]
+movesFromBoard s@(_,_,_,playerCol) (l,t) = let Just b = getBoard s (l,t) in
   do
     (file,x) <- zip b [0..]
     (Full (pieceCol,piece,_),y) <- zip file [0..]
@@ -261,7 +257,7 @@ box = replicateM 4 [-1..1]
 toCoords :: [Int] -> Coords
 toCoords [a,b,c,d] = (a,b,c,d)
 
-qm = map toCoords$ filter (any (/= 0)) box
+qm = map toCoords$ filter (any (/=0)) box
 dm = map toCoords$ filter (all (/=0)) box
 um = map toCoords$ filter ((==3) . length . (filter (/=0))) box
 bm = map toCoords$ filter ((==2) . length . (filter (/=0))) box

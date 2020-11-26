@@ -66,9 +66,26 @@ getAt s (l,t,x,y) = getBoard s (l,t) >>= flip getAtBoard (x,y)
 getAtBoard :: Board -> (Int,Int) -> Maybe Cell
 getAtBoard css (x,y) = css !!? x >>= (!!? y)
 
+-- TODO: account for games with an even number of starting timelines
+-- | The number of active timelines on the side with more active timelines
+numActive :: State -> Int
+numActive (nw,wtls,btls,col) =
+  let nb = length wtls - nw - 1 in
+      min nb nw + 1
+
+-- TODO: account for games with an even number of starting timelines
+-- | What is the turn number of the next player to move?
+present :: State -> Int
+present s@(nw,wtls,btls,col) =
+  let nactive = numActive s
+      -- relies on 'drop (-1) xs == xs'
+      wtls' = take (nw + 1 + nactive) $ drop (nw - nactive) wtls
+      wt = minimum (map fst wtls')
+      in wt
+
 type Vector = (Int,Int,Int,Int)
 
--- [source, destination] (needs to be a list for castling and en-passant
+-- [source, destination] (needs to be a list for castling and en-passant)
 type Move = [(Coords,Coords)]
 
 -- order matters
