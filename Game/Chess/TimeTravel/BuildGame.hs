@@ -91,6 +91,7 @@ concretizeMoves s expectedl (MoveFrom m :ms) = do
              matches spos src
           && matches dpos (dl',dt',dx,dy)
           && getPiece (getAt s spos) == p)
+        -- Castling is not considered a rook move
         & filter (\mvs -> p /= Just Rook || length mvs == 1)
 
   candidates <- case jt of

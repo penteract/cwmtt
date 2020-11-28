@@ -203,10 +203,11 @@ movesFromBoard s@(_,_,_,playerCol) (l,t) = let Just b = getBoard s (l,t) in
             Full (col,_,_) -> if col /= playerCol then [[(pos,pos')]] else []
             Empty -> [[(pos,pos')]]
         fixedmoves = do
-          d <- fixed piece
+          (capturing, d) <- map ((,) False) (fixed piece)
+                         ++ map ((,) True) (fixedCapturing playerCol piece)
           case getAt s (pos + d) of
             Just (Full (col,_,_)) -> if col /= playerCol then [[(pos,pos + d)]] else []
-            Just Empty -> [[(pos,pos + d)]]
+            Just Empty -> if capturing then [] else [[(pos,pos + d)]]
             Nothing -> []
     dirmoves ++ fixedmoves ++ special pos s
 
@@ -264,8 +265,6 @@ bm = map toCoords$ filter ((==2) . length . (filter (/=0))) box
 rm = map toCoords$ filter ((==1) . length . (filter (/=0))) box
 nm =  [ da*(units!!a) + db*(units!!b)  | a <- [0..3], b <- [a+1 .. 3], dx <- [-1,1], dy <-[-2,2], (da,db) <- [(dx,dy),(dy,dx)]]
 
-wpncm = [unity, unitx]
-bpncm = map negate wpncm
 wpcm =  [ -unitl+unitt, -unitl-unitt, unity+unitx, unity-unitx]
 bpcm = map negate wpcm
 
@@ -305,7 +304,7 @@ pawnDirections Black = [unitl, -unity]
 
 
 -- other moves that depend on the state of the game and may affect more than 2 squares
--- en passant, castle, pawn double move
+-- en passant, castle, pawn non-capturing moves
 special :: Coords -> State -> [Move]
 special pos@(l,t,x,y) state@(_,_,_,playerCol) =
   let Just b = getBoard state (l,t) in
