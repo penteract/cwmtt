@@ -1,0 +1,46 @@
+[Black "Tesseract"]
+[White "Void Voyage"]
+[Layout "Standard - Turn Zero"]
+[Result "0-1"]
+[mode "5D"]
+
+1. e3 / Nf6
+2. g3 / d5
+3. Bb5 / c6
+4. Bd3 / e6
+5. c4 / Na6
+6. Ne2 / Ng4
+7. f3 / Nxe3
+8. xe3 / xc4 
+9. Be4 / Qa5 
+10. Nc3 / Bd6#
+
+[White "Tesseract"]
+[Black "Void Voyage"]
+[Layout "No Queens"]
+[Result "1-0"]
+[mode "5D"]
+
+1. d3 / Nf5
+2. g4 / Nd4
+3. Na3 / e5
+4. Be3 / Nxc2
+5. Nxc2 / Bd5
+6. b3 / c5
+7. g5 / Rf7
+8. Kb1 / xg5  ? white castling
+9. Rxg5 / c4
+10. Nb4 / Be6
+11. Rxg2 / xd3
+12. Rxe6 / Kxe6
+13. Nc6#
+
+[Black "Tesseract"]
+[White "RoMad"]
+[Layout "Princess"]
+[Result "1-0"]
+[mode "5D"]
+
+1. d4 / Nf6
+2. Nf3 / Nc6
+3. 

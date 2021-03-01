@@ -19,6 +19,7 @@ library
     , Game.Chess.TimeTravel.Utils
     , Game.Chess.TimeTravel.Layouts
     , Game.Chess.TimeTravel.Parser
+    , Game.Chess.TimeTravel.PGNParser
     , Game.Chess.TimeTravel.Printing
     , Game.Chess.TimeTravel.BuildGame
   build-depends:

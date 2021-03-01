@@ -65,7 +65,7 @@ displayMove :: State -> Move -> String
 displayMove s@(_,_,_,col) mv@(((l,t,x,y),(l',t',x',y')):rest) =
   let Just (Full (_,p,_)) = getAt s (l,t,x,y)
     in if p==Rook && not (null rest) then displayCastle rest else
-      let jumpInfo = if (l,t)==(l',t') then "" else
+      let jumpInfo = if (l,t)==(l',t') then isCapture s mv else
                      (if isJust (getBoard (flipPlayer s) (l',nextT t' col)) then
                        ">>" else ">")++isCapture s mv++showLT (l',t')
         in

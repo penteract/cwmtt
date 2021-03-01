@@ -36,7 +36,8 @@ data MoveData = MD {
   , relative :: (Bool,Bool)
 } deriving (Eq,Show)
 
-data CheckData = Nocheck | Check [(Maybe Piece,PartialPos)] | Mate [(Maybe Piece,PartialPos)] deriving (Eq,Show)
+data CheckData = Nocheck | Check [(Maybe Piece,PartialPos)] | Mate [(Maybe Piece,PartialPos)]
+ deriving (Eq,Show)
 
 justify :: Parser a -> Parser (Maybe a)
 justify p s = case p s of

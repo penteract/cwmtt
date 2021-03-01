@@ -2,6 +2,7 @@
 -- My pet hypothesis (which is almost certainly wrong): The perfect game of 2D chess is identical to the perfect game of 5D chess (which never branches), it's just that it's easier to find refutations in 5D.
 
 import Game.Chess.TimeTravel.Parser
+import Game.Chess.TimeTravel.PGNParser
 import Game.Chess.TimeTravel.Printing
 import Game.Chess.TimeTravel.Layouts
 import Game.Chess.TimeTravel.Datatypes
@@ -11,7 +12,7 @@ import Game.Chess.TimeTravel.Utils
 
 import System.Exit
 import System.Environment
--- import System.IO
+import System.IO
 import Data.List
 import Control.Monad
 import Control.Arrow((>>>))
@@ -20,6 +21,7 @@ commands = [
    ("play",play)
   ,("convert",convert)
   ,("test",test)
+  ,("debug",debug)
   ]
 
 main = do
@@ -98,3 +100,27 @@ test = do
   case concretize (makeState (fst standard)) (1,pm) of
     Left e -> putStrLn ("err"++e)
     Right (s,ms) -> putStrLn ("move:"++displayMoveSet s ms)
+
+{-
+getAll :: IO String
+getAll = do
+  s <- getLine
+  iseof <- isEOF
+  if iseof then return ""
+    else ((s++).('\n':)) <$> getAll -}
+
+fn (Just (Notated _ ms rs, _)) = up rs (foldr Cons Nil ms)
+
+debug :: IO ()
+debug = interact (
+  -- parse
+    parsePGN >>> fn
+  -- check and calculate the details
+  >>> rDelistify (build standard)
+  -- reorganize to work with 'displayMoveSet'
+  >>> rToListWarn >>> (\l -> zipWith (\ (s,_) (_,m) -> (s,m)) l (tail l))
+  --print
+  >>> map (uncurry displayMoveSet)
+  >>> zipWith (\ (col,t) m -> show t ++show col ++ ". "++m)
+      (interleave (zip (repeat White) [1..]) (zip (repeat Black) [1..]))
+  >>> unlines)
