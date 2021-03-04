@@ -139,7 +139,7 @@ sanecut inf hc xsec = remove hc xsec >>= sanity inf
 -- Check that if a new timeline must be created (it cannot be 'pass'), then
 --
 sanity :: Info -> HC AxisLoc -> [HC AxisLoc]
-sanity (Info _ nP _) hc = if any null hc then [] else [res]
+sanity (Info _ nP _) hc = if any null hc then [] else [playFrom ++ res]
   where
     (playFrom,new) = splitAt nP hc
     (_,res) = foldr (\ (n:ns) (b,rest) -> (b || isPass (snd n), (if b && isPass(snd n) then ns else n:ns):rest)) (False,[]) new
