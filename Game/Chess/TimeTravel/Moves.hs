@@ -46,6 +46,7 @@ type UnorderedMoveset = [(Int,Move,MoveType)]
 
 
 -- Either all earliest active boards are played on or at least one move goes back in time and there is an active timeline available
+-- Or a past inactive board is activated (and played on)
 -- TODO: actually implement this
 mightMoveTime :: [(Int, Move, MoveType)] -> State -> Bool
 mightMoveTime _ _ = True

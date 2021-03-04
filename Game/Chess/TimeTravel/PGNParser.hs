@@ -8,7 +8,7 @@ import Game.Chess.TimeTravel.Parser(Parser, (<?>), (>>$), ($$)
   , MoveData(..), MoveSetPartial(..), CheckData(..), MoveP(..)
   , ret, unknownPos, parseJT, get, justify, parseFile, parseRank, parseInt, parseNat, parsePiece)
 import Data.Char
-import qualified Data.Map as Map
+import qualified Data.Map.Lazy as Map
 import Data.List(foldl')
 import Data.Maybe (isJust)
 

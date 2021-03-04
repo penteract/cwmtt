@@ -9,6 +9,7 @@ import Game.Chess.TimeTravel.Datatypes
 import Game.Chess.TimeTravel.Moves
 import Game.Chess.TimeTravel.BuildGame
 import Game.Chess.TimeTravel.Utils
+import Game.Chess.TimeTravel.FastCheckMate
 
 import System.Exit
 import System.Environment
@@ -21,6 +22,8 @@ commands = [
    ("play",play)
   ,("convert",convert)
   ,("test",test)
+  ,("checkmate",detectCheckmate)
+  ,("fastmate",detectCheckmateFast)
   ,("debug",debug)
   ]
 
@@ -42,6 +45,7 @@ usage = putStr $ unlines[
   ,"help - print this message"
   ,"play - enter moves and see the board state after each"
   ,"convert - convert moves from my notation to Shad's"
+  ,"checkmate - test if a situation is checkmate"
   ]
 
 play = do
@@ -97,7 +101,7 @@ test = do
   let Just (pm,"") = parseTurn "Nf3"
   putStrLn""
   print pm
-  case concretize (makeState (fst standard)) (1,pm) of
+  case concretize (fst standard) (1,pm) of
     Left e -> putStrLn ("err"++e)
     Right (s,ms) -> putStrLn ("move:"++displayMoveSet s ms)
 
@@ -109,14 +113,14 @@ getAll = do
   if iseof then return ""
     else ((s++).('\n':)) <$> getAll -}
 
-fn (Just (Notated _ ms rs, _)) = up rs (foldr Cons Nil ms)
+fn (Just (Notated _ ms rs, _)) = up rs ms
 
 debug :: IO ()
 debug = interact (
   -- parse
     parsePGN >>> fn
   -- check and calculate the details
-  >>> rDelistify (build standard)
+  >>> build standard
   -- reorganize to work with 'displayMoveSet'
   >>> rToListWarn >>> (\l -> zipWith (\ (s,_) (_,m) -> (s,m)) l (tail l))
   --print
@@ -124,3 +128,32 @@ debug = interact (
   >>> zipWith (\ (col,t) m -> show t ++show col ++ ". "++m)
       (interleave (zip (repeat White) [1..]) (zip (repeat Black) [1..]))
   >>> unlines)
+
+detectCheckmate :: IO ()
+detectCheckmate = do
+  inp <- getContents
+  let Just (Notated tags mvs rest, _) = parsePGN inp
+      g = getGame tags
+  if null rest then return ()
+    else putStr "Unparsed: " >> print rest
+  let ss = rToListWarn (build g mvs)
+      (final,_) = last ss
+      lms = legalMoveSets final
+  case lms of
+    [] -> putStrLn "Checkmate"
+    (m:ms) -> putStrLn ("Not checkmate: " ++ displayMoveSet final m)
+
+
+detectCheckmateFast :: IO ()
+detectCheckmateFast = do
+  inp <- getContents
+  let Just (Notated tags mvs rest, _) = parsePGN inp
+      g = getGame tags
+  if null rest then return ()
+    else putStr "Unparsed: " >> print rest
+  let ss = rToListWarn (build g mvs)
+      (final,_) = last ss
+      lms = fastLegalMoveSets final
+  case lms of
+    [] -> putStrLn "Checkmate"
+    (m:ms) -> putStrLn ("Not checkmate: " ++ displayMoveSet final m)

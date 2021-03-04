@@ -1,0 +1,14 @@
+[Id "dc40fe290537df43c8d71cd756777966-1610873673260"]
+[Board "Standard - Half Reflected"]
+[Mode "5D"]
+
+1. (0T1)g3 / (0T1)b6
+2. (0T2)e4 / (0T2)e5
+3. (0T3)Bb5 / (0T3)Ba6
+4. (0T4)Ba4 / (0T4)h6
+5. (0T5)Qd1>>(0T3)f3~ / (1T3)Nf6
+6. (1T4)Qf3>>(0T5)f4 / (1T4)Qe6
+7. (1T5)Nc3 / (0T5)Bf8>(1T5)e8
+8. (1T6)h3 (0T6)c4 / (1T6)Kd8>(0T6)c8
+9. (1T7)Ke1>(0T7)e2 / (1T7)d5 (0T7)Qe8>>(1T6)e7~ (2T5)exf4
+10. (2T6)b4 / (2T6)Qxe4

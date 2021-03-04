@@ -108,3 +108,9 @@ infixl 1 ?
 (?) :: Maybe a -> e -> Either e a
 Nothing ? e = Left e
 Just x ? e = Right x
+
+fst4 :: (a,b,c,d) -> a
+fst4 (a,b,c,d) = a
+
+fstPair :: (a,b,c,d) -> (a,b)
+fstPair (a,b,c,d) = (a,b)

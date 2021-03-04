@@ -50,6 +50,16 @@ type State = (Int,[Timeline],[Timeline],Player)
 type Coords = (Int,Int,Int,Int)
 -- Note that L increases going down the screen whereas y increases going up the screen
 
+-- | Get the time of the last board of the current player's colour on a particular timeline
+getTime :: State -> Int -> Maybe Int
+getTime (n,wtls,_,White) l = fst <$> wtls !!? (n - l)
+getTime (n,_,btls,Black) l = fst <$> btls !!? (n - l)
+
+-- | If the current player branches, what is the index of the branch?
+getNewL :: State -> Int
+getNewL (n,wtls,_,White) = n - length wtls
+getNewL (n,_,_,Black) = n + 1
+
 getBoard :: State -> (Int,Int) -> Maybe Board
 getBoard (n,wtls,_,White) (l,t) = wtls !!? (n - l) >>= flip getBoardTL t
 getBoard (n,_,btls,Black) (l,t) = btls !!? (n - l) >>= flip getBoardTL t
@@ -93,9 +103,9 @@ type MoveSet = [Move]
 
 type CastleData = ((Int,Int),(Int,Int))
 
--- Initial boards, castle manouvers (a castle is represented as a king position (within a 2d board) and a direction.
+-- Initial state, castle manouvers (a castle is represented as a king position (within a 2d board) and a direction.
 -- The king may castle with any rook in that direction (provided that the intervening spaces are empty and neither piece has moved))
-type Game = ([Board], [CastleData])
+type Game = (State, ())
 
 
 
@@ -103,8 +113,6 @@ type Game = ([Board], [CastleData])
 --infixl 6  ++++
 infix 5 |+
 (a,b)|+(c,d) = (a,b,c,d)
-
-
 
 instance Num (Int,Int,Int,Int) where
   (a,b,c,d) + (w,x,y,z) = (a+w,b+x,c+y,d+z)
