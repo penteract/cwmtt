@@ -129,21 +129,22 @@ debug =  do
     --putStrLn (drawState g s)
     let nl = length lms
     let nf = length flms
-    mapM_ (putStrLn.displayMoveSet s) (take 100 flms)
-    mapM_ (putStrLn.displayMoveSet s) (take 100 lms)
-    print(nf,nl)
+    --mapM_ (putStrLn.displayMoveSet s) (take 100 flms)
+    --mapM_ (putStrLn.displayMoveSet s) (take 100 lms)
+    print nf
+    print nl
     when (nl/=nf)(do
-      --putStrLn (drawState g s)
+      putStrLn (drawState g s)
       print nf
       print nl
-      let nsls = nub (map sort lms)
-      let nsfs = nub (map sort flms)
-      let diff = nsls\\nsfs
-      print (length nsls,length nsfs, length diff)
-      mapM_ (putStrLn.displayMoveSet s) (take 10 diff)
-      mapM_ (print) (take 10 diff)
+      let nsls = (map (\ x -> (sort x,x)) lms)
+      let nsfs = (map (\ x -> (sort x,x)) flms)
+      let diff = sortingDiffOn fst nsls nsfs
+      --print (length nsls,length nsfs) --, length diff)
+      mapM_ (putStrLn.displayMoveSet s.snd) (take 100 diff)
+      mapM_ (print) (take 100 diff)
       --putStrLn (drawState g (apply (head diff) s))
-      --error "stop"
+      error "stop"
       )
     --print (lengthGT flms 100)
     putStrLn ""

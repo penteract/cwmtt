@@ -122,7 +122,7 @@ data Info = Info{
 -- Should be much faster at telling if something is checkmate.
 fastLegalMoveSets :: State -> [MoveSet]
 fastLegalMoveSets s =
-  up (head.snd$buildHC s) uncurry (search []) (buildHC s)
+  up (head.snd$buildHC s) uncurry (\a b -> search [] a b Nothing) (buildHC s)
 
 -- reasons a moveset might be illegal:
 -- A king can be captured
@@ -141,10 +141,10 @@ fastLegalMoveSets s =
 -- ( axis {-maps to L-},(index, move))
 type Cub = [(Int,(Int,AxisLoc))]
 
-search :: [[Int]] -> Info -> HCs AxisLoc -> [MoveSet]
-search sncl inf@(Info s nP lmp) allhcs@(hc:hcs) =
+search :: [[Int]] -> Info -> HCs AxisLoc -> Maybe Sec -> [MoveSet]
+search sncl inf@(Info s nP lmp) allhcs@(hc:hcs) ms =
   case mapM listToMaybe hc of
-    Nothing -> search sncl inf hcs
+    Nothing -> search sncl inf hcs ms
     Just c ->
       let cell = zip [0..] c
           csmp = map fst c
@@ -154,48 +154,71 @@ search sncl inf@(Info s nP lmp) allhcs@(hc:hcs) =
           bb = findChecks inf cell newState hc
           cc@((_,isOne,isOther),_) = testPresent inf cell newState hc
           dd = jumpOrderConsistent inf cell s hc
-          xsecs = (findProblems inf cell newState hc)
-          xsecs' = up (aa,bb,cc,dd) (if not (allhcs `contains` [1,0,0]){-csmp `elem` sncl-} then error (unlines [show c,show xsecs',show aa,show bb,show cc ,show dd,
+          xsecs = findProblems inf cell newState hc
+          xsecs' = up (aa,bb,cc,dd) (if not (allhcs `contains` [46,0,25,0,0,0]){-csmp `elem` sncl-} then
+            error (unlines [show c,show xsecs',show aa,show bb,show cc ,show dd,
+            show ms,
             displayMoveSet s mvset{-, drawState (s,()) newState-}]) else id) findProblems inf cell newState hc
 
           in
         case xsecs of
-          [] -> {-up csmp-} mvset : search (csmp:sncl) inf (sanecut inf hc
-                  (XSec $ zipWith (\ (_,(a,_)) i -> (i,[a])) cell [0..]) ++ hcs)
-          (xsec:_) -> up csmp search (csmp:sncl) inf (sanecut inf hc xsec ++hcs)
-search sncl inf [] = []
+          [] -> {-up csmp-}if isKnownCheck newState Nothing || not (correctTurn newState) then error "uuh" else
+            mvset : search (csmp:sncl) inf (sanecut inf hc
+                  (XSec $ zipWith (\ (_,(a,_)) i -> (i,[a])) cell [0..]) ++ hcs) Nothing
+          (xsec:_) -> {-up csmp-} search (csmp:sncl) inf (sanecut inf hc xsec ++hcs)(Just xsec)
+search sncl inf [] _ = []
 
 sanecut :: Info -> HC AxisLoc -> Sec -> [HC AxisLoc]
-sanecut inf hc xsec = up xsec (remove hc xsec >>= sanity inf)
+sanecut inf hc xsec = let
+  a = hc `contain` [34, 11, 14, 45, 0, 0]
+  r = remove hc xsec
+  b = r `contains`[34, 11, 14, 45, 0, 0]
+  res =  (r >>= sanity inf)
+  c = res `contains` [34, 11, 14, 45, 0, 0]
+  in {-if a/=c then error$ unlines(
+    map show hc ++
+    "":map (unlines. map show) r ++
+    [ show xsec
+    , show (a,b,c)
+    ])  else-} res
 
 -- Ensure that if a new timeline with l-index l1 must be created (i.e. it cannot be 'pass'),
 --  then new timelines with l-indices less than l1 must be created
 sanity :: Info -> HC AxisLoc -> [HC AxisLoc]
-sanity (Info _ nP _) hc = if any null hc then [] else [playFrom ++ res]
+sanity (Info _ nP _) hc = if any null hc then [] else res
   where
+    a = hc `contain` [46,0,25,0,0,0]
     (playFrom,new) = splitAt nP hc
-    (_,res) = foldr (\ (n:ns) (b,rest) -> (b || isPass (snd n), (if b && isPass(snd n) then ns else n:ns):rest)) (False,[]) new
+    (bit,newres) = foldr (\ (n:ns) (b,rest) -> (b || not (isPass (snd n)), (if b && isPass(snd n) then ns else n:ns):rest)) (False,[]) new
+    res = [playFrom++newres]
+    b = res `contains` [46,0,25,0,0,0]
+    res' = if a/=b then upi (putStrLn (unlines (map show new++[""]++map show newres++["",show bit])) >> return res)  else res
 
 
 findProblems :: Info -> Cub -> State -> HC AxisLoc -> [Sec]
 --findProblems numPlayable cell hc s = concat [test numPlayable cell hc s | test <- [findChecks, testPresent, jumpsMatchLeaves, jumpOrderConsistent]]
 findProblems inf cell s hc =
   jumpsMatchLeaves inf cell s hc ++
-  map snd (jumpOrderConsistent inf cell s hc) ++
+  jumpOrderConsistent inf cell s hc ++
   map snd (findChecks inf cell s hc) ++
   snd (testPresent inf cell s hc)
 
 -- Check if a branch involves jumping to a source board of a branch that must be created later
-jumpOrderConsistent :: Info -> Cub -> State -> HC AxisLoc -> [(String,Sec)]
-jumpOrderConsistent (Info _ nP lmp) cell s hc = sec
+-- Also check that there aren't any jumps to passes
+jumpOrderConsistent :: Info -> Cub -> State -> HC AxisLoc -> [Sec]
+jumpOrderConsistent (Info _ nP lmp) cell s hc = noJumpsToPass ++ sec
   where
+    (playable,new) = splitAt nP cell
     (jumpSrcs,jumpDests) = unzip [(((l,t),ax),((l',t'),ax))
-       | (ax,(ix,loc))<- drop nP cell, Jump _ (l,t,_,_) (l',t',_,_) <- [loc]]
+       | (ax,(ix,loc))<- new, Jump _ (l,t,_,_) (l',t',_,_) <- [loc]]
     conflicts = [ (lt,ax,ax')
                  | ((lt,ax),rest) <- zip jumpDests (tail$ tails jumpSrcs),
                      (lt',ax') <- rest, lt==lt' ]
-    sec = [(show lt,XSec [filterAxis (\ (_,j) -> Just lt == (fstPair<$>jumpDest j)) ax hc,
-                 filterAxis (\ (_,j) -> Just lt == (fstPair<$>jumpSource j)) ax' hc])
+    -- passes = [((ax,[ix]),t) | (ax,(ix,Pass (l,t))) <- playable]
+    noJumpsToPass = [XSec [(ax,[ix]), filterAxis (\ (_,j) -> Just lt == (fstPair<$>jumpDest j)) ax' hc]
+        | (ax,(ix,Pass lt)) <- playable, (lt',ax')<-jumpDests, lt==lt']
+    sec = [XSec [filterAxis (\ (_,j) -> Just lt == (fstPair<$>jumpDest j)) ax hc,
+                 filterAxis (\ (_,j) -> Just lt == (fstPair<$>jumpSource j)) ax' hc]
            | (lt,ax,ax') <- conflicts]
 
 
@@ -226,23 +249,6 @@ jumpsMatchLeaves (Info _ nP lmp) cell s hc = noDups ++ srcMatches ++ mustAppear
     mustAppear = [ makeSec c |
       (Just c)<- map (leaveSource.snd.snd) cell, c `notElem` map fst jumps
      ]
-    {-
-    -- No 2 jumps have the same source l
-    noDups = [ [filterAxis (or.(((==l).fst4<$>).jumpSource.snd)) ax hc,
-                filterAxis (or.(((==l).fst4<$>).jumpSource.snd)) ax' hc]
-        | (((l,_,_,_),(ax,_)),((l',_,_,_),(ax',_))) <- zip sortedJumps (tail sortedJumps), l==l']
-    -- if there is a jump from l, the right piece must leave l
-    srcMatches = [[
-        filterAxis (or.(((== c)<$>).jumpSource.snd)) ax hc
-        , filterAxis (and.(((/=c)<$>).leaveSource.snd)) ax' hc
-        ]
-       | (c@(l,_,_,_),(ax,_)) <- jumps, ax' <- [fromJust $ lookup l lmp], Just c /= (leaveSource.snd.snd) (cell!!ax')
-      ]
-    -- Each leave must appear as some jump
-    mustAppear = [
-      |
-      (Just c)<- map (leaveSource.snd.snd) cell,
-      ]-}
 
 -- This will want optimising: there must be a better way to eliminate things that don't pass the present to the opponent
 -- idea: put pass at the end of non-branching axes
@@ -262,20 +268,20 @@ testPresent (Info s@(nw,wtls,btls,col) nP _) cell newS hc =
     rs = case rest of
       [] -> []
       ((ax,(ix,Pass _)):_) -> [(ax,[ix])]
-
-    -- activatable = map fst (take nPri newBoards)
-    -- check how boards that can be activated affect this
-
-    -- Consider adding sanity checks that newS matches our calculations
-    --   -- null secs == correctTurn newS
     newt = present newS
-    passes = [((ax,[ix]),t) | (ax,(ix,Pass (l,t))) <- always , abs l<=nA+length tMovers]
+    activePasses = [((ax,[ix]),t) | (ax,(ix,Pass (l,t))) <- always , abs l<=nA+length tMovers]
+    nonPasses = [t | (ax,(ix,loc)) <- always, (l,t) <- [getLTFromLoc loc] , abs l<=nA+length tMovers]
     mint = minimum [t | (ax,(ix,loc)) <- always, (l,t) <- [getLTFromLoc loc] , abs l<=nA+length tMovers]
     --minPass = minimum (map snd passes)
-    secs = if any ((==mint).snd) passes && all (\(ax,(ix,Jump _ _ (_,dt,_,_))) -> dt>=mint) tMovers
-      then [ XSec (sec:rs++[ filterAxis (\ (ix,Jump _ _ (_,dt,_,_))-> (dt>=t)) ax hc | (ax,(ix,loc))<-tMovers])
-        | (sec,t) <- passes, t==mint]
-      else []
+    isBad = any ((==mint).snd) activePasses && all (\(ax,(ix,Jump _ _ (_,dt,_,_))) -> dt>=mint) tMovers
+    secs = if isBad==correctTurn newS then error$ unlines [
+        "!!!!!!!!!!!!!!!!!!!!!!!!!!!"
+      , show cell
+      ]
+      else if isBad
+        then [ XSec (sec:rs++[ filterAxis (\ (ix,Jump _ _ (_,dt,_,_))-> (dt>=t)) ax hc | (ax,(ix,loc))<-tMovers])
+          | (sec,t) <- activePasses, t==mint]
+        else []
 
     -- -- see if there are any passes on active boards before the present
     -- secs = [ XSec ((ax,[ix]):rs++[ filterAxis (\ (ix,Jump _ _ (_,dt,_,_))-> up (ix,dt) (dt>=t)) ax hc | (ax,(ix,loc))<-tMovers])
@@ -308,7 +314,7 @@ findChecks (Info oldS _ lmp) cell newS@(_,_,_,playerCol) hc = do
               else []
           _ -> []
   let mvs = (fixedmoves ++ dirmoves)
-  if Just (XSec [])== listToMaybe (map snd mvs)
+  if Just (XSec [{-(4,[43,45,47,49,51,53,54,55,56,57,58]),(3,[6]),(0,[9]),(2,[25])-}])== listToMaybe (map snd mvs)
     then error$ unlines [
         show pos
       , show mvs
@@ -319,8 +325,8 @@ findChecks (Info oldS _ lmp) cell newS@(_,_,_,playerCol) hc = do
 
 -- Take the cross section in which the given cells have the given values
 fromCells :: State -> [((Int, Int, Int, Int), Cell)] -> HC AxisLoc -> [(Int, Int)] -> (String,Sec)
-fromCells s@(_,_,_,col) pcs hc lmp = (show (map fst pcs), XSec [filterAxis
-   (\ (_, j) -> Just cell == (mBoard j >>= flip getAtBoard (x, y))) ax hc
+fromCells s@(_,_,_,col) pcs hc lmp = (show (map fst pcs), XSec [
+  filterAxis (\ (_, j) -> Just cell == (mBoard j >>= flip getAtBoard (x, y)) &&  nextT (snd (getLTFromLoc j)) col==t) ax hc
    | (pos@(l, t, x, y), cell) <- pcs,
      (flip nextT col <$> getTime s l)`elem` [Just t,Nothing],
      Just ax <- [lookup l lmp]] )

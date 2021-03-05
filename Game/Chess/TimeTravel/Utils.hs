@@ -2,6 +2,7 @@ module Game.Chess.TimeTravel.Utils where
 
 import System.IO.Unsafe(unsafePerformIO)
 import System.IO(hPutStrLn,stderr)
+import Data.List (sort,sortOn)
 
 up x y = unsafePerformIO (print x >> return y)
 upp x = up x x
@@ -114,3 +115,43 @@ fst4 (a,b,c,d) = a
 
 fstPair :: (a,b,c,d) -> (a,b)
 fstPair (a,b,c,d) = (a,b)
+
+
+sortingDiff :: (Ord a) => [a] -> [a] -> [a]
+sortingDiff xs ys = easyDiff (remdups$sort xs) (remdups$sort ys)
+sortingDiffDups :: (Ord a) => [a] -> [a] -> [a]
+sortingDiffDups xs ys = easyDiff (sort xs) (sort ys)
+
+
+remdups [] = []
+remdups [x] = [x]
+remdups (x:y:xs) = if x==y then remdups (y:xs) else x:remdups (y:xs)
+
+easyDiff :: (Ord a) => [a] -> [a] -> [a]
+easyDiff [] ys = ys
+easyDiff xs [] = xs
+easyDiff (x:xs) (y:ys) = case compare x y of
+  EQ -> easyDiff xs ys
+  LT -> x:easyDiff xs (y:ys)
+  GT -> y:easyDiff (x:xs) ys
+
+
+
+sortingDiffOn :: (Ord b) => (a->b) -> [a] -> [a] -> [a]
+sortingDiffOn f xs ys = easyDiffOn f (remdupsOn f$sortOn f xs) (remdupsOn f$sortOn f ys)
+
+
+remdupsOn ::(Ord b) => (a->b) -> [a] -> [a]
+remdupsOn f [] = []
+remdupsOn f [x] = [x]
+remdupsOn f (x:y:xs) = if f x==f y then remdupsOn f (y:xs) else x:remdupsOn f (y:xs)
+
+easyDiffOn :: (Ord b) => (a->b) -> [a] -> [a] -> [a]
+easyDiffOn f [] ys = ys
+easyDiffOn f xs [] = xs
+easyDiffOn f (x:xs) (y:ys) = case compare (f x) (f y) of
+  EQ -> easyDiffOn f xs ys
+  LT -> x:easyDiffOn f xs (y:ys)
+  GT -> y:easyDiffOn f (x:xs) ys
+
+snd3 (a,b,c) = b
