@@ -10,6 +10,7 @@ import Data.Maybe
 
 import Game.Chess.TimeTravel.Datatypes
 import Game.Chess.TimeTravel.Utils
+import Game.Chess.TimeTravel.Layouts
 
 
 legalMoveSets :: State -> [MoveSet]
@@ -119,7 +120,11 @@ legalMovesFromBoard :: State -> (Int,Int) -> [Move]
 legalMovesFromBoard s@(_,_,_,playerCol) (l,t) = do
   m <- movesFromBoard s (l,t)
   let t' = nextT t playerCol
-  if isKnownCheck (halfApply m s) (Just (l,t')) then [] else return m
+      newBoards = foldl' (fullMove' s) [] m in
+    if or (isKnownCheck (halfApply m s) (Just (l,t')) :
+         [isKnownCheck (makeFrom b (other playerCol)) Nothing
+             | nb@((lt),b)<-newBoards, lt/=(l,t')])
+        then [] else return m
 
 -- | Apply a moveset to a state and change the player
 apply :: MoveSet -> State -> State

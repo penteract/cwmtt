@@ -1,4 +1,4 @@
-module Game.Chess.TimeTravel.Layouts(standard, sb, getGame)
+module Game.Chess.TimeTravel.Layouts(standard, sb, getGame,makeFrom)
 where
 
 import Game.Chess.TimeTravel.Datatypes
@@ -32,6 +32,10 @@ hrb = transpose [
     , [Full (Black,Pawn,Still) | n <- [0..7]]
     , map (\ p -> Full (Black,p,Still)) (reverse sr)
     ]
+
+makeFrom :: Board -> Player -> State
+makeFrom b White = (0,[(1,[b])],[(0,[])],White)
+makeFrom b Black = (0,[(1,[])],[(1,[b])],Black)
 
 standard :: Game
 standard = ((0,[(1,[sb])],[(0,[])],White), (){-[((4,y),(dx,0)) | dx <- [-1,1], y <- [0,7]]-})

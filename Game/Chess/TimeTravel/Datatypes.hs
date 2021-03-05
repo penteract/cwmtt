@@ -57,8 +57,8 @@ getTime (n,_,btls,Black) l = fst <$> btls !!? (n - l)
 
 -- | If the current player branches, what is the index of the branch?
 getNewL :: State -> Int
-getNewL (n,wtls,_,White) = n - length wtls
-getNewL (n,_,_,Black) = n + 1
+getNewL (n,_,_,White) = n+1
+getNewL (n,wtls,_,Black) = n - length wtls
 
 getBoard :: State -> (Int,Int) -> Maybe Board
 getBoard (n,wtls,_,White) (l,t) = wtls !!? (n - l) >>= flip getBoardTL t

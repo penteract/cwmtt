@@ -116,18 +116,43 @@ getAll = do
 fn (Just (Notated _ ms rs, _)) = up rs ms
 
 debug :: IO ()
-debug = interact (
-  -- parse
-    parsePGN >>> fn
-  -- check and calculate the details
-  >>> build standard
-  -- reorganize to work with 'displayMoveSet'
-  >>> rToListWarn >>> (\l -> zipWith (\ (s,_) (_,m) -> (s,m)) l (tail l))
-  --print
-  >>> map (uncurry displayMoveSet)
-  >>> zipWith (\ (col,t) m -> show t ++show col ++ ". "++m)
-      (interleave (zip (repeat White) [1..]) (zip (repeat Black) [1..]))
-  >>> unlines)
+debug =  do
+  inp <- getContents
+  let Just (Notated tags mvs rest, _) = parsePGN inp
+      g = getGame tags
+  if null rest then return ()
+    else putStr "Unparsed: " >> print rest
+  let ss = rToListWarn (build g mvs)
+  mapM_ (\(s,_) -> do
+    let lms = legalMoveSets s
+    let flms = fastLegalMoveSets s
+    --putStrLn (drawState g s)
+    let nl = length lms
+    let nf = length flms
+    mapM_ (putStrLn.displayMoveSet s) (take 100 flms)
+    mapM_ (putStrLn.displayMoveSet s) (take 100 lms)
+    print(nf,nl)
+    when (nl/=nf)(do
+      --putStrLn (drawState g s)
+      print nf
+      print nl
+      let nsls = nub (map sort lms)
+      let nsfs = nub (map sort flms)
+      let diff = nsls\\nsfs
+      print (length nsls,length nsfs, length diff)
+      mapM_ (putStrLn.displayMoveSet s) (take 10 diff)
+      mapM_ (print) (take 10 diff)
+      --putStrLn (drawState g (apply (head diff) s))
+      --error "stop"
+      )
+    --print (lengthGT flms 100)
+    putStrLn ""
+   ) [last ss]
+
+lengthGT :: [a] -> Int -> Bool
+lengthGT [] _ =  False
+lengthGT (_:xs) 0 = True
+lengthGT (_:xs) n = lengthGT xs (n-1)
 
 detectCheckmate :: IO ()
 detectCheckmate = do

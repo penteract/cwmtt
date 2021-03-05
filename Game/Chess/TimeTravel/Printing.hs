@@ -13,7 +13,7 @@ import Game.Chess.TimeTravel.Moves
 drawState :: Game -> State -> String
 drawState ((_,b:_,_,_), _) (lastTl, wtls, btls, pl) =
   let maxturn = maximum [fst t | t <- wtls]
-      timelines = zipWith (drawtlpair (length b) (2*maxturn)) wtls btls in
+      timelines = zipWith (drawtlpair 8 (2*maxturn)) wtls btls in
       unlines (horizontalConcat timelines)
 
 
