@@ -320,7 +320,7 @@ makeMoveset = (>>= toMove) -- branches are already at the end
 buildHC :: State -> (Info, HCs AxisLoc)
 buildHC s =
   let pbs = playableBoards s
-      bmts = [(l,[(m,getType pbs m) | m <- []:legalMovesFromBoard s pb ])
+      bmts = [(l,[(m,getType pbs m) | m <- legalMovesFromBoard s pb++[[]] ])-- putting the pass at the end gives a speedup by a factor of around 500 on tests/silly.5dpgn
                 | pb@(l,t) <- pbs]
       in makeAxes s bmts
 

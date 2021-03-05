@@ -37,6 +37,41 @@ main = do
   usage>>exitFailure
 
   --putStr$ drawState standard (1,[(2,[sb,sb]),(1,[sb])],[(1,[sb]),(0,[])],White)
+debug :: IO ()
+debug =  do
+  inp <- getContents
+  let Just (Notated tags mvs rest, _) = parsePGN inp
+      g = getGame tags
+  if null rest then return ()
+    else putStr "Unparsed: " >> print rest
+  let ss = rToListWarn (build g mvs)
+  mapM_ (\(i,(s,_)) -> do
+    let lms = legalMoveSets s
+    let flms = fastLegalMoveSets s
+    --putStrLn (drawState g s)
+    let nl = length (take 1 lms)
+    let nf = length (take 1 flms)
+    --mapM_ (putStrLn.displayMoveSet s) (take 100 flms)
+    --mapM_ (putStrLn.displayMoveSet s) (take 100 lms)
+    print i
+    print nf
+    --print nl
+    {-when (nl/=nf)(do
+    putStrLn (drawState g s)
+    print nf
+    print nl
+    let nsls = (map (\ x -> (sort x,x)) lms)
+    let nsfs = (map (\ x -> (sort x,x)) flms)
+    let diff = sortingDiffOn fst nsls nsfs
+    --print (length nsls,length nsfs) --, length diff)
+    mapM_ (putStrLn.displayMoveSet s.snd) (take 100 diff)
+    mapM_ (print) (take 100 diff)
+    --putStrLn (drawState g (apply (head diff) s))
+    error "stop"
+    )-}
+    --print (lengthGT flms 100)
+    putStrLn ""
+    ) (zip [1..] ss)
 
 usage :: IO ()
 usage = putStr $ unlines[
@@ -116,40 +151,6 @@ getAll = do
 
 fn (Just (Notated _ ms rs, _)) = up rs ms
 
-debug :: IO ()
-debug =  do
-  inp <- getContents
-  let Just (Notated tags mvs rest, _) = parsePGN inp
-      g = getGame tags
-  if null rest then return ()
-    else putStr "Unparsed: " >> print rest
-  let ss = rToListWarn (build g mvs)
-  mapM_ (\(s,_) -> do
-    let lms = legalMoveSets s
-    let flms = fastLegalMoveSets s
-    --putStrLn (drawState g s)
-    let nl = length lms
-    let nf = length flms
-    --mapM_ (putStrLn.displayMoveSet s) (take 100 flms)
-    --mapM_ (putStrLn.displayMoveSet s) (take 100 lms)
-    print nl
-    print nf
-    when (nl/=nf)(do
-      putStrLn (drawState g s)
-      print nf
-      print nl
-      let nsls = (map (\ x -> (sort x,x)) lms)
-      let nsfs = (map (\ x -> (sort x,x)) flms)
-      let diff = sortingDiffOn fst nsls nsfs
-      --print (length nsls,length nsfs) --, length diff)
-      mapM_ (putStrLn.displayMoveSet s.snd) (take 100 diff)
-      mapM_ (print) (take 100 diff)
-      --putStrLn (drawState g (apply (head diff) s))
-      error "stop"
-      )
-    --print (lengthGT flms 100)
-    putStrLn ""
-   ) ss
 
 lengthGT :: [a] -> Int -> Bool
 lengthGT [] _ =  False
