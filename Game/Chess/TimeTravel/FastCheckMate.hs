@@ -254,9 +254,7 @@ jumpsMatchLeaves (Info _ nP lmp) cell s hc = noDups ++ srcMatches ++ mustAppear
 -- idea: put pass at the end of non-branching axes
 --testPresent :: Info -> Cub -> State -> HC AxisLoc -> (Bool,[Sec])
 testPresent (Info s@(nw,wtls,btls,col) nP _) cell newS hc =
-  (if (null secs /= correctTurn newS)
-    then up ("aargh",secs,newt)
-    else id) ((newt, null secs, correctTurn newS), secs)
+  ((newt, null secs, correctTurn newS), secs)
   where
     -- Work out which set of new tls can move time
     (always,newBoards) = splitAt nP cell
@@ -275,7 +273,7 @@ testPresent (Info s@(nw,wtls,btls,col) nP _) cell newS hc =
     --minPass = minimum (map snd passes)
     isBad = any ((==mint).snd) activePasses && all (\(ax,(ix,Jump _ _ (_,dt,_,_))) -> dt>=mint) tMovers
     secs = if isBad==correctTurn newS then error$ unlines [
-        "!!!!!!!!!!!!!!!!!!!!!!!!!!!"
+        "Either the results are being inspected when they shouldn't be, or something has gone wrong"
       , show cell
       ]
       else if isBad
@@ -356,7 +354,7 @@ makeAxes s lmvs =
       axisParts = map (toAxes s newL) lmvs
       build (n,_) (ax,_) = zip [0..] (ax ++ [ loc | (_,laxs)<-axisParts, (m,loc)<-laxs, m==n])
       maxBranches = length$ filter (any isLeave . fst) axisParts
-      newBranches = Pass undefined : [ loc | (_,laxs)<-axisParts, (m,loc)<-laxs, m==newL]
+      newBranches = Pass (error "the l,t coordinates of branch passes shouldn't be inspected") : [ loc | (_,laxs)<-axisParts, (m,loc)<-laxs, m==newL]
       nP = length lmvs
       inf = Info s nP (zip (map fst lmvs ++ [newL,newL+signum newL .. newL+maxBranches-1]) [0..])
 

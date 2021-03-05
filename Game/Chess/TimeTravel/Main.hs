@@ -46,6 +46,7 @@ usage = putStr $ unlines[
   ,"play - enter moves and see the board state after each"
   ,"convert - convert moves from my notation to Shad's"
   ,"checkmate - test if a situation is checkmate"
+  ,"fastmate - quickly test if a situation is checkmate"
   ]
 
 play = do
