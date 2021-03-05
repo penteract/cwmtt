@@ -35,13 +35,6 @@ type XSec = [(Int,[Int])]
 -- Consider using indicator functions rather than lists of integers
 data Sec = XSec XSec | XmatchesOneY (Int,[Int]) [(Int,[Int])] deriving (Eq,Show)
 
---siz :: Sec -> HC a -> Integer
---siz
--- cut :: HCs a -> HC a -> XSec ->HCs a
--- cut hc (sec:xsec)=
---   let (withsec,withoutsec) = split hc sec in
---     in cut withsec xsec ++ [withoutsec]
--- cut hc [] = []
 
 remove :: HC a -> Sec -> HCs a
 remove hc (XSec xsec) = cut hc xsec
@@ -122,7 +115,7 @@ data Info = Info{
 -- Should be much faster at telling if something is checkmate.
 fastLegalMoveSets :: State -> [MoveSet]
 fastLegalMoveSets s =
-  {-up (head.snd$buildHC s)-} uncurry (\a b -> search [] a b Nothing) (buildHC s)
+  {-up (head.snd$buildHC s)-} uncurry (search []) (buildHC s)
 
 -- reasons a moveset might be illegal:
 -- A king can be captured
@@ -141,32 +134,23 @@ fastLegalMoveSets s =
 -- ( axis {-maps to L-},(index, move))
 type Cub = [(Int,(Int,AxisLoc))]
 
-search :: [[Int]] -> Info -> HCs AxisLoc -> Maybe Sec -> [MoveSet]
-search sncl inf@(Info s nP lmp) allhcs@(hc:hcs) ms =
+search :: [[Int]] -> Info -> HCs AxisLoc -> [MoveSet]
+search sncl inf@(Info s nP lmp) allhcs@(hc:hcs) =
   case mapM listToMaybe hc of
-    Nothing -> search sncl inf hcs ms
+    Nothing -> search sncl inf hcs
     Just c ->
       let cell = zip [0..] c
           csmp = map fst c
           mvset = makeMoveset (map (snd.snd) cell)
           newState = apply mvset s
-          aa = jumpsMatchLeaves inf cell newState hc
-          bb = findChecks inf cell newState hc
-          cc@((_,isOne,isOther),_) = testPresent inf cell newState hc
-          dd = jumpOrderConsistent inf cell s hc
           xsecs = findProblems inf cell newState hc
-          xsecs' = up (aa,bb,cc,dd) (if not (allhcs `contains` [46,0,25,0,0,0]){-csmp `elem` sncl-} then
-            error (unlines [show c,show xsecs',show aa,show bb,show cc ,show dd,
-            show ms,
-            displayMoveSet s mvset{-, drawState (s,()) newState-}]) else id) findProblems inf cell newState hc
-
           in
         case xsecs of
-          [] -> {-up csmp-}if isKnownCheck newState Nothing || not (correctTurn newState) then error "uuh" else
+          [] -> if isKnownCheck newState Nothing || not (correctTurn newState) then error "uuh" else
             mvset : search (csmp:sncl) inf (sanecut inf hc
-                  (XSec $ zipWith (\ (_,(a,_)) i -> (i,[a])) cell [0..]) ++ hcs) Nothing
-          (xsec:_) -> {-up csmp-} search (csmp:sncl) inf (sanecut inf hc xsec ++hcs)(Just xsec)
-search sncl inf [] _ = []
+                  (XSec $ zipWith (\ (_,(a,_)) i -> (i,[a])) cell [0..]) ++ hcs)
+          (xsec:_) ->  search (csmp:sncl) inf (sanecut inf hc xsec ++hcs)
+search sncl inf [] = []
 
 sanecut :: Info -> HC AxisLoc -> Sec -> [HC AxisLoc]
 sanecut inf hc xsec = let
@@ -201,7 +185,7 @@ findProblems inf cell s hc =
   jumpsMatchLeaves inf cell s hc ++
   jumpOrderConsistent inf cell s hc ++
   map snd (findChecks inf cell s hc) ++
-  snd (testPresent inf cell s hc)
+  testPresent inf cell s hc
 
 -- Check if a branch involves jumping to a source board of a branch that must be created later
 -- Also check that there aren't any jumps to passes
@@ -253,8 +237,7 @@ jumpsMatchLeaves (Info _ nP lmp) cell s hc = noDups ++ srcMatches ++ mustAppear
 -- This will want optimising: there must be a better way to eliminate things that don't pass the present to the opponent
 -- idea: put pass at the end of non-branching axes
 --testPresent :: Info -> Cub -> State -> HC AxisLoc -> (Bool,[Sec])
-testPresent (Info s@(nw,wtls,btls,col) nP _) cell newS hc =
-  ((newt, null secs, correctTurn newS), secs)
+testPresent (Info s@(nw,wtls,btls,col) nP _) cell newS hc = secs
   where
     -- Work out which set of new tls can move time
     (always,newBoards) = splitAt nP cell
@@ -266,25 +249,20 @@ testPresent (Info s@(nw,wtls,btls,col) nP _) cell newS hc =
     rs = case rest of
       [] -> []
       ((ax,(ix,Pass _)):_) -> [(ax,[ix])]
-    newt = present newS
+    --newt = present newS
     activePasses = [((ax,[ix]),t) | (ax,(ix,Pass (l,t))) <- always , abs l<=nA+length tMovers]
     nonPasses = [t | (ax,(ix,loc)) <- always, (l,t) <- [getLTFromLoc loc] , abs l<=nA+length tMovers]
     mint = minimum [t | (ax,(ix,loc)) <- always, (l,t) <- [getLTFromLoc loc] , abs l<=nA+length tMovers]
     --minPass = minimum (map snd passes)
     isBad = any ((==mint).snd) activePasses && all (\(ax,(ix,Jump _ _ (_,dt,_,_))) -> dt>=mint) tMovers
-    secs = if isBad==correctTurn newS then error$ unlines [
+    secs = {-if isBad==correctTurn newS then error$ unlines [
         "Either the results are being inspected when they shouldn't be, or something has gone wrong"
       , show cell
       ]
-      else if isBad
+      else -}if isBad
         then [ XSec (sec:rs++[ filterAxis (\ (ix,Jump _ _ (_,dt,_,_))-> (dt>=t)) ax hc | (ax,(ix,loc))<-tMovers])
           | (sec,t) <- activePasses, t==mint]
         else []
-
-    -- -- see if there are any passes on active boards before the present
-    -- secs = [ XSec ((ax,[ix]):rs++[ filterAxis (\ (ix,Jump _ _ (_,dt,_,_))-> up (ix,dt) (dt>=t)) ax hc | (ax,(ix,loc))<-tMovers])
-    --   | (ax,(ix,Pass (l,t))) <- always , abs l<=nA+length tMovers && if (t<newt) then error "something broke" else (t == newt) ] -- if we overshoot, all relevant TLs are active
-
 
 
 findChecks :: Info -> Cub -> State -> HC AxisLoc -> [(String,Sec)]
@@ -311,15 +289,15 @@ findChecks (Info oldS _ lmp) cell newS@(_,_,_,playerCol) hc = do
               then return (fromCells oldS [(pos,cl),(pos+d,c)] hc lmp)
               else []
           _ -> []
-  let mvs = (fixedmoves ++ dirmoves)
-  if Just (XSec [{-(4,[43,45,47,49,51,53,54,55,56,57,58]),(3,[6]),(0,[9]),(2,[25])-}])== listToMaybe (map snd mvs)
+  fixedmoves ++ dirmoves
+  {-if Just (XSec [{-(4,[43,45,47,49,51,53,54,55,56,57,58]),(3,[6]),(0,[9]),(2,[25])-}])== listToMaybe (map snd mvs)
     then error$ unlines [
         show pos
       , show mvs
       , show (makeMoveset (map (snd.snd) cell))
       , show cell
       ]
-    else mvs
+    else mvs -}
 
 -- Take the cross section in which the given cells have the given values
 fromCells :: State -> [((Int, Int, Int, Int), Cell)] -> HC AxisLoc -> [(Int, Int)] -> (String,Sec)
