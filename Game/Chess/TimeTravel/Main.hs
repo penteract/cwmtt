@@ -131,8 +131,8 @@ debug =  do
     let nf = length flms
     --mapM_ (putStrLn.displayMoveSet s) (take 100 flms)
     --mapM_ (putStrLn.displayMoveSet s) (take 100 lms)
-    print nf
     print nl
+    print nf
     when (nl/=nf)(do
       putStrLn (drawState g s)
       print nf
@@ -148,7 +148,7 @@ debug =  do
       )
     --print (lengthGT flms 100)
     putStrLn ""
-   ) [last ss]
+   ) ss
 
 lengthGT :: [a] -> Int -> Bool
 lengthGT [] _ =  False

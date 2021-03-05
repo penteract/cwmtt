@@ -40,7 +40,7 @@ correctTurn s@(nw,wtls,btls,col) =
 -- We need to search for all topological sorts of branching moves  given hops
 -- (we must move from a board before jumping to it)
 -- As there is at most 1 branching move from each timeline, the structure is a forest.
-data Tree a = Node a (Forest a)
+data Tree a = Node a (Forest a) deriving (Show)
 type Forest a = [Tree a]
 
 type UnorderedMoveset = [(Int,Move,MoveType)]
@@ -66,8 +66,10 @@ validPermutations mvs = do
         [makeForest l moveinfo | (l,_,_) <- sameboardmoves])
   --passes which have multiple hops to them are trickier
   -- for each such pass, we take each hop that could be a move between playable
-  -- boards and consider the possibility that it is the
-  (betweenBoardmoves, newbranches) <- map unzip $ maybeProd [ removeEach <$> M.lookup l moveinfo | (l,n,t) <- passes]
+  -- boards and consider the possibility that it is the hop and the rest are branches
+  (betweenBoardmoves, newbranches) <- map unzip $ maybeProd
+    [ (map (\(x@(ls,_,_),rs)->(x,rs++fromMaybe [] (M.lookup ls moveinfo))) .removeEach)
+       <$> M.lookup l moveinfo | (l,n,t) <- passes]
   let branchTrees' = [Node m (makeForest l moveinfo) | (l,m,_) <- join newbranches]++branchTrees
 
   fromForest [m | (_,m,_) <- sameboardmoves++betweenBoardmoves] branchTrees'

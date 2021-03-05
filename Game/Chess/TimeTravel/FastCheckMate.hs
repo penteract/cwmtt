@@ -122,7 +122,7 @@ data Info = Info{
 -- Should be much faster at telling if something is checkmate.
 fastLegalMoveSets :: State -> [MoveSet]
 fastLegalMoveSets s =
-  up (head.snd$buildHC s) uncurry (\a b -> search [] a b Nothing) (buildHC s)
+  {-up (head.snd$buildHC s)-} uncurry (\a b -> search [] a b Nothing) (buildHC s)
 
 -- reasons a moveset might be illegal:
 -- A king can be captured
