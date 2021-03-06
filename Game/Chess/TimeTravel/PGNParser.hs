@@ -92,6 +92,7 @@ parsePGNMoves :: Parser ([MoveP], CheckData)
 parsePGNMoves =
   allowSpace parsePGNMove >>$ \ m ->
   foldl'  combine Nocheck $$ parseMoveAnnots >>$ \ ch ->
+  ignoreExtras >>$ \() ->
   (get " " () >>$ const parsePGNMoves) <?> ret ([], Nocheck) >>$ \ (ms,ch') -> -- Consider allowing other kinds of space
   ret (m:ms, combine ch ch')
 

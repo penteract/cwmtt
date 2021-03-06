@@ -86,3 +86,9 @@ showLT (l,t) = "("++show l ++ "T"++show t++")"
 
 showPos :: (Int,Int) -> String
 showPos (f,r) = toEnum (f+fromEnum 'a'):show(r+1)
+
+printPGN :: [(State,MoveSet)] -> String
+printPGN = unlines . zipWith (curry displayMoveSetCol) [2..]
+  where
+    displayMoveSetCol (n,(s@(_,_,_,Black),mv)) = "/" ++ displayMoveSet s mv
+    displayMoveSetCol (n,(s@(_,_,_,White),mv)) = show (n`div`2)++"." ++ displayMoveSet s mv

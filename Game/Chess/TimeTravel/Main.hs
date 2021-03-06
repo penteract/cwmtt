@@ -49,13 +49,13 @@ debug =  do
     let lms = legalMoveSets s
     let flms = fastLegalMoveSets s
     --putStrLn (drawState g s)
-    let nl = length (take 1 lms)
-    let nf = length (take 1 flms)
+    let nl = length lms --(take 1 lms)
+    let nf = length flms --(take 1 flms)
     --mapM_ (putStrLn.displayMoveSet s) (take 100 flms)
     --mapM_ (putStrLn.displayMoveSet s) (take 100 lms)
     print i
+    print nl
     print nf
-    --print nl
     {-when (nl/=nf)(do
     putStrLn (drawState g s)
     print nf
