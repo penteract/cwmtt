@@ -39,7 +39,8 @@ packages:
 # - git: https://github.com/commercialhaskell/stack.git
 #   commit: e7b331f14bcffb8367cd58fbfc8b40ec7642100a
 #
-# extra-deps: []
+extra-deps:
+- incremental-sat-solver-0.1.8@sha256:9791328827d84cd7cd0428eac8d6155b2b0cea5a5e7f9cff17f304b93531ad8f,1164
 
 # Override default flag values for local packages and extra-deps
 # flags: {}
