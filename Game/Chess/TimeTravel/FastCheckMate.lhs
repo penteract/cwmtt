@@ -8,6 +8,7 @@ eliminate illegal sections of the hypercuboid until we find a legal moveset.
 First we get some imports out of the way - general utilities and things specific
 to this game.
 
+> import Control.Parallel
 > import Control.Arrow(first)
 > import Control.Applicative((<|>))
 > import Data.List(foldl', nub, partition, sortOn, tails)
@@ -58,8 +59,8 @@ remainder.
 >   case takePoint remaining of
 >     Nothing -> []
 >     (Just x) -> case findProblems info x remaining of
->       [] -> makeMoveset x : search info (removePoint info x remaining)
->       (reason:_) -> search info (remove info reason remaining)
+>       [] -> makeMoveset x : foldr (\ hc' rs -> par rs (search info hc' ++ rs)) [] (removePoint info x remaining)
+>       (reason:_) -> foldr (\ hc' rs -> par rs (search info hc' ++ rs)) [] (remove info reason remaining)
 
 Note: There are many good reasons to remove points, most of which can sometimes
 remove large numbers of points. One important thing here is that we only remove
@@ -120,15 +121,15 @@ When we cut pieces out of a hypercuboid, the remainder may not still be a
 hypercuboid. To deal with this, we use a list of disjoint hypercuboids to
 represent a union.
 
-> type SearchSpace = HCs AxisLoc
+> type SearchSpace = HC AxisLoc
 > type HCs a = [HC a]
 > contains :: HCs a -> [Int] -> Bool
 > contains hcs ixs = any (`contain` ixs) hcs
 
 'takePoint' finds a point from the first hypercuboid in a list which contains one.
 
-> takePoint :: HCs a -> Maybe [(Int,a)]
-> takePoint hcs = foldr (\ hc rest -> mapM listToMaybe hc <|> rest) Nothing hcs
+> takePoint :: HC a -> Maybe [(Int,a)]
+> takePoint hc = mapM listToMaybe hc
 
 Building the search space
 =========================
@@ -178,7 +179,7 @@ hybercube given as a list of pairs of Ints.
 >       nP = length playableTimelines
 >       sign = signum newL
 >       info = Info s nP (zip (map fst pbs ++ [newL,newL+sign .. newL+sign*(maxBranches-1)]) [0..])
->     in (info, [map (zip [0..]) (nonBranchingAxes++branchingAxes)])
+>     in (info, map (zip [0..]) (nonBranchingAxes++branchingAxes))
 > data Info = Info{
 >      state :: State
 >    , numPlayable :: Int
@@ -284,8 +285,8 @@ TODO: Consider using indicator functions rather than lists of coordinates (or
 just use a more efficient data structure)
 
 
-> remove :: Info -> Sec -> HCs AxisLoc -> HCs AxisLoc
-> remove info sec (hc:hcs) = (remove' hc sec >>= sanity info ) ++ hcs
+> remove :: Info -> Sec -> HC AxisLoc -> HCs AxisLoc
+> remove info sec hc = remove' hc sec >>= sanity info
 >   where
 >     remove' hc (XSec xsec) = cut hc xsec
 >     remove' hc m@(XmatchesOneY leave branches) =
@@ -296,7 +297,7 @@ just use a more efficient data structure)
 >       in foldl' (\ hc j -> snd (split hc j)) notleaving branches -- No leave and no branches there
 >            : exactlyOne leaving branches []
 
-> removePoint :: Info -> [(Int,a)] -> HCs AxisLoc -> HCs AxisLoc
+> removePoint :: Info -> [(Int,a)] -> HC AxisLoc -> HCs AxisLoc
 > removePoint info p = remove info (XSec (xSecFromPoint p))
 
 When removing a piece from a hypercuboid, we apply some sanity checks to make
@@ -340,10 +341,9 @@ We make sure that it represents a consistent moveset before testing for checks
 and ensuring that the present is moved, or we would need to be more careful
 about the assumtions made by the code doing those tests.
 
-> findProblems :: Info -> [(Int,AxisLoc)] -> HCs AxisLoc -> [Sec]
-> findProblems info@(Info s _ _) point hcs =
->   let hc = head hcs
->       cell = zip [0..] point
+> findProblems :: Info -> [(Int,AxisLoc)] -> HC AxisLoc -> [Sec]
+> findProblems info@(Info s _ _) point hc =
+>   let cell = zip [0..] point
 >       s' = apply (makeMoveset point) s
 >     in arrivalsMatchLeaves info cell s' hc ++
 >       jumpOrderConsistent info cell s' hc ++
