@@ -1,0 +1,245 @@
+[Board "Standard - Turn Zero"]
+[White "5dchess-tools@1a01f1a"]
+[Black "Void Voyage"]
+[Size "8x8"]
+
+1. e3 / b5
+2. Qf3 / Nc6
+3. Bxb5 / e5
+4. Bxc6 / Bc5
+5. Bxa8 / (0T5)Bc5>>x(0T2)c2
+6. (-1T3)Nc3 (0T6)Nc3 {AI thinks it's winning?} / (-1T3)c6
+7. (-1T4)Ke2 {Still thinks it's winning} / (-1T4)Qb6
+8. (L-1T5)Qf3>>(L-1T4)f4 / (1T4)f6
+9. (L1T5)Qf4>>x(L0T5)e4~ {The self_play example wouldn't yield anything because the pool overflew, tweaking the parameters on self_play makes it play (1T5)Qh5} / (0T6)Qd8>>(0T2)h4 (>L-2)
+10. {Too many timelines, engine breaks, as it is unable to declare mate based on the following move:} (-2T3)Qxf7 (0T7)Qf3>>x(0T3)f7#
+
+{
+1
+20
+(1,1)(0T1)a2a3
+(0T1)a2a4
+(0T1)Nb1a3
+(0T1)Nb1c3
+(0T1)b2b3
+(0T1)b2b4
+(0T1)c2c3
+(0T1)c2c4
+(0T1)d2d3
+(0T1)d2d4
+
+2
+22
+(1,1)(0T1)a7a6
+(0T1)a7a5
+(0T1)b7b6
+(0T1)b7b5
+(0T1)Nb8a6
+(0T1)Nb8c6
+(0T1)c7c6
+(0T1)c7c5
+(0T1)d7d6
+(0T1)d7d5
+
+3
+31
+(2,2)(0T2)a2a3
+(0T2)a2a4
+(0T2)Nb1a3
+(0T2)Nb1c3
+(0T2)b2b3
+(0T2)b2b4
+(0T2)c2c3
+(0T2)c2c4
+(0T2)Qd1e2
+(0T2)Qd1f3
+
+4
+23
+(2,2)(0T2)a7a6
+(0T2)a7a5
+(0T2)b5b4
+(0T2)Nb8a6
+(0T2)Nb8c6
+(0T2)c7c6
+(0T2)c7c5
+(0T2)Bc8b7
+(0T2)Bc8a6
+(0T2)d7d6
+
+5
+50
+(3,3)(0T3)a2a3
+(0T3)a2a4
+(0T3)Nb1a3
+(0T3)Nb1c3
+(0T3)b2b3
+(0T3)b2b4
+(0T3)c2c3
+(0T3)c2c4
+(0T3)d2d3
+(0T3)d2d4
+
+6
+29
+(3,3)(0T3)a7a6
+(0T3)a7a5
+(0T3)Ra8b8
+(0T3)Nc6b4
+(0T3)Nc6a5
+(0T3)Nc6b8
+(0T3)Nc6e5
+(0T3)Nc6d4
+(0T3)Bc8b7
+(0T3)Bc8a6
+
+7
+66
+(4,4)(0T4)a2a3
+(0T4)a2a4
+(0T4)Nb1a3
+(0T4)Nb1c3
+(0T4)b2b3
+(0T4)b2b4
+(0T4)Bb5a4
+(0T4)Bb5a6
+(0T4)Bb5c4
+(0T4)Bb5d3
+
+8
+28
+(4,4)(0T4)a7a6
+(0T4)a7a5
+(0T4)Ra8b8
+(0T4)Bc8b7
+(0T4)Bc8a6
+(0T4)d7xc6
+(0T4)Qd8e7
+(0T4)Qd8f6
+(0T4)Qd8g5
+(0T4)Qd8h4
+
+9
+70
+(5,5)(0T5)a2a3
+(0T5)a2a4
+(0T5)Nb1a3
+(0T5)Nb1c3
+(0T5)b2b3
+(0T5)b2b4
+(0T5)c2c3
+(0T5)c2c4
+(0T5)Bc6b5
+(0T5)Bc6a4
+
+10
+49
+(5,5)(0T5)a7a6
+(0T5)a7a5
+(0T5)Bc5b4
+(0T5)Bc5a3
+(0T5)Bc5b6
+(0T5)Bc5d4
+(0T5)Bc5xe3
+(0T5)Bc5d6
+(0T5)Bc5e7
+(0T5)Bc5f8
+
+11
+4555
+(6,3)(3,3)(0T6)a2a3 (-1T3)a2a3
+(0T6)a2a3 (-1T3)a2a4
+(0T6)a2a3 (-1T3)Nb1a3
+(0T6)a2a3 (-1T3)Nb1c3
+(0T6)a2a3 (-1T3)b2b3
+(0T6)a2a3 (-1T3)b2b4
+(0T6)a2a3 (-1T3)d2d3
+(0T6)a2a3 (-1T3)d2d4
+(0T6)a2a3 (-1T3)Ke1e2
+(0T6)a2a3 (-1T3)e3e4
+
+12
+1449
+(6,3)(3,3)(0T6)a7a6 (-1T3)a7a6
+(0T6)a7a6 (-1T3)a7a5
+(0T6)a7a6 (-1T3)b5b4
+(0T6)a7a6 (-1T3)Nb8a6
+(0T6)a7a6 (-1T3)Nb8c6
+(0T6)a7a6 (-1T3)Bc2b1
+(0T6)a7a6 (-1T3)Bc2b3
+(0T6)a7a6 (-1T3)Bc2a4
+(0T6)a7a6 (-1T3)Bc2d1
+(0T6)a7a6 (-1T3)Bc2d3
+
+13
+80
+(4,4)(-1T4)Ra1b1
+(-1T4)a2a3
+(-1T4)a2a4
+(-1T4)b2b3
+(-1T4)b2b4
+(-1T4)Nc3b1
+(-1T4)Nc3xb5
+(-1T4)Nc3e2
+(-1T4)Nc3d1
+(-1T4)Nc3a4
+
+14
+2007
+(6,4)(4,4)(0T6)a7a6 (-1T4)a7a6
+(0T6)a7a6 (-1T4)a7a5
+(0T6)a7a6 (-1T4)b5b4
+(0T6)a7a6 (-1T4)Nb8a6
+(0T6)a7a6 (-1T4)Bc2b1
+(0T6)a7a6 (-1T4)Bc2b3
+(0T6)a7a6 (-1T4)Bc2a4
+(0T6)a7a6 (-1T4)Bc2d1
+(0T6)a7a6 (-1T4)Bc2d3
+(0T6)a7a6 (-1T4)Bc2e4
+
+15
+86
+(5,5)(-1T5)Ra1b1
+(-1T5)a2a3
+(-1T5)a2a4
+(-1T5)b2b3
+(-1T5)b2b4
+(-1T5)Nc3b1
+(-1T5)Nc3xb5
+(-1T5)Nc3d1
+(-1T5)Nc3a4
+(-1T5)Nc3d5
+
+16
+255114
+(4,4)(6,4)(5,4)(1T4)Nb8>(0T6)b8 (-1T5)a7a6
+(1T4)Nb8>(0T6)b8 (-1T5)a7a5
+(1T4)Nb8>(0T6)b8 (-1T5)b5b4
+(1T4)Nb8>(0T6)b8 (-1T5)Qb6a5
+(1T4)Nb8>(0T6)b8 (-1T5)Qb6a6
+(1T4)Nb8>(0T6)b8 (-1T5)Qb6b7
+(1T4)Nb8>(0T6)b8 (-1T5)Qb6c5
+(1T4)Nb8>(0T6)b8 (-1T5)Qb6d4
+(1T4)Nb8>(0T6)b8 (-1T5)Qb6xe3
+(1T4)Nb8>(0T6)b8 (-1T5)Qb6c7
+
+17
+128
+(5,5)(1T5)Ra1b1
+(1T5)a2a3
+(1T5)a2a4
+(1T5)b2b3
+(1T5)b2b4
+(1T5)Nc3b1
+(1T5)Nc3xb5
+(1T5)Nc3e2
+(1T5)Nc3d1
+(1T5)Nc3a4
+
+18
+^C
+
+real	40m45.466s
+user	40m32.133s
+sys	0m8.157s
+}

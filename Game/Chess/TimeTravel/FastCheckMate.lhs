@@ -347,8 +347,8 @@ about the assumtions made by the code doing those tests.
 >       s' = apply (makeMoveset point) s
 >     in arrivalsMatchLeaves info cell s' hc ++
 >       jumpOrderConsistent info cell s' hc ++
->       findChecks info cell s' hc ++
->       testPresent info cell s' hc
+>       testPresent info cell s' hc ++
+>       findChecks info cell s' hc
 
 Note: We rely on laziness here. Only the first problem we find gets examined,
 so Haskell won't waste time computing the others (and it doesn't matter if they
@@ -467,7 +467,7 @@ should write a better explanation at some point.
 
 We begin by finding which new timelines will be active when they are created,
 ('newActive') and then check whether there are any passes on active timelines
-(including newly active ones) in the new present. 
+(including newly active ones) in the new present.
 
 > testPresent :: Info -> HCell -> State -> HC AxisLoc -> [Sec]
 > testPresent (Info s@(nw,wtls,btls,col) nP _) cell newS hc = secs
