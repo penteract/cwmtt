@@ -1,4 +1,4 @@
-module Game.Chess.TimeTravel.FastCheckMate
+module Game.Chess.TimeTravel.FastCheckMateTmp
 where
 import qualified Data.Map.Lazy as M
 import Control.Arrow
@@ -184,8 +184,8 @@ findProblems :: Info -> Cub -> State -> HC AxisLoc -> [Sec]
 findProblems inf cell s hc =
   jumpsMatchLeaves inf cell s hc ++
   jumpOrderConsistent inf cell s hc ++
-  map snd (findChecks inf cell s hc) ++
-  testPresent inf cell s hc
+  testPresent inf cell s hc ++
+  map snd (findChecks inf cell s hc)
 
 -- Check if a branch involves jumping to a source board of a branch that must be created later
 -- Also check that there aren't any jumps to passes
@@ -334,7 +334,7 @@ makeAxes s lmvs =
       maxBranches = length$ filter (any isLeave . fst) axisParts
       newBranches = Pass (error "the l,t coordinates of branch passes shouldn't be inspected") : [ loc | (_,laxs)<-axisParts, (m,loc)<-laxs, m==newL]
       nP = length lmvs
-      inf = Info s nP (zip (map fst lmvs ++ [newL,newL+signum newL .. newL+maxBranches-1]) [0..])
+      inf = Info s nP (zip (map fst lmvs ++ [newL,newL+signum newL .. newL+(signum newL)*(maxBranches-1)]) [0..])
 
     in (inf, [zipWith build lmvs axisParts ++ [zip [0..] newBranches | _ <- [1..maxBranches]]])
 
