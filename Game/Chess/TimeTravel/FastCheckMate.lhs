@@ -55,12 +55,12 @@ all points that are illegal for the same reason, and continue searching the
 remainder.
 
 > search :: Info -> SearchSpace -> [MoveSet]
-> search info remaining =
->   case takePoint info remaining of
->     Nothing -> []
->     (Just x) -> case findProblems info x of
->       [] -> makeMoveset x : search info (removePoint info x remaining)
->       (reason:_) -> search info (remove info reason remaining)
+> search info space =
+>   case takePoint info space of
+>     (Nothing, _) -> []
+>     (Just x, remainder) -> case findProblems info x of
+>       [] -> makeMoveset x : search info (removePoint info x remainder)
+>       (reason:_) -> search info (remove info reason remainder)
 
 Note: There are many good reasons to remove points, most of which can sometimes
 remove large numbers of points. One important thing here is that we only remove
@@ -127,7 +127,7 @@ represent a union.
 
 'takePoint' finds a point that has not yet been ruled out.
 
-> takePoint :: Info -> SearchSpace -> Maybe [(Int,AxisLoc)]
+> takePoint :: Info -> SearchSpace -> (Maybe [(Int,AxisLoc)], SearchSpace)
 > takePoint i ss = getPoint (zip [0..] (fullSpace i)) (numDims i) ss
 
 

@@ -3,10 +3,14 @@ module Game.Chess.TimeTravel.SAT(SearchSpace, Sec, XSec, toFormula, exactlyOne, 
 where
 
 import Game.Chess.TimeTravel.Utils
-import Data.Boolean.SatSolver
+--import Data.Boolean.SatSolver
+import Z3.Base
+import Data.IntMap(IntMap)
 import Data.List(foldl')
+import Control.Monad
+import GHC.IO.Unsafe(unsafePerformIO)
 
-type SearchSpace = (Int, [SatSolver])
+type SearchSpace = (Int, Context, Solver)
 
 type Sec = Prop
 type XSec = [(Int,[Int])]
@@ -58,19 +62,19 @@ instance Monad M where
   xm >>= g = M \ n -> let (x,m,ps) = runM xm n in let (y, m',qs) = runM (g x) m in (y, m', qs++ps)
 
 fresh :: M Prop
-fresh = M \n -> (Lit n,n-1,[])
+fresh = M \n -> (Lit n,n+1,[])
 
 toCNF :: Prop -> M [[Prop]]
 toCNF (Conj xs) = concat <$> mapM toCNF xs
-toCNF (Disj ys) = (:[]) <$> mapM mkVar ys
+toCNF (Disj ys) = (:[]) <$> mapM makeVar ys
 toCNF t@(Lit x) = return [[t]]
 toCNF t@(Neg (Lit x)) = return [[t]]
 toCNF _ = error "unsimplified"
 
-mkVar :: Prop -> M Prop
-mkVar t@(Lit x) = return t
-mkVar t@(Neg (Lit x)) = return t
-mkVar (Conj xs) = do
+makeVar :: Prop -> M Prop
+makeVar t@(Lit x) = return t
+makeVar t@(Neg (Lit x)) = return t
+makeVar (Conj xs) = do
   cnf <- toCNF (Conj xs)
   f <- fresh
   M (\ n ->  ((),n, map (neg f:) cnf))
@@ -112,21 +116,50 @@ exactlyOne i xs =
   -- [[any' [toVar i l x | x <- sec]  | (l,sec) <- xs]]
 
 mkSpace :: [[(Int,a)]] -> SearchSpace
-mkSpace hc =  (-1,return newSatSolver)
+mkSpace hc = unsafePerformIO $ do
+  ctx <- mkContext =<< mkConfig
+  slv <- mkSolver ctx
+  return (10000,ctx,slv)
 
 addAssertion :: Sec -> SearchSpace -> SearchSpace
-addAssertion b (n,s) = let (cs,m,helper) = runM (toCNF.group.pushNeg$b) n
-      in (m, (s >>= assertTrue (toBoolean (cs ++ helper)) ))
+addAssertion b (n,ctx,slv) = unsafePerformIO $ do
+  --let (cs,m,helper) = runM (toCNF.group.pushNeg$b) n
+  constr <- propToBoolean ctx b -- toBoolean ctx (cs ++ helper)
+  solverAssertCnstr ctx slv constr
+  return (n,ctx,slv)
+  {-let (cs,m,helper) = runM (toCNF.group.pushNeg$b) n
+      in (m, (s >>= assertTrue (toBoolean (cs ++ helper)) ))-}
 
-getPoint :: [(Int,[(Int,a)])] -> Int -> SearchSpace -> Maybe [(Int,a)]
-getPoint spc i (_,ss) = case ss >>= solve of
+getPoint :: [(Int,[(Int,a)])] -> Int -> SearchSpace -> (Maybe [(Int,a)], SearchSpace)
+getPoint spc i (n,ctx,slv) = unsafePerformIO $ do
+  (r, m') <- solverCheckAndGetModel ctx slv
+  case r of
+    Unsat -> return (Nothing,(n,ctx,slv))
+    Sat -> do
+      let Just m = m'
+      firsts <- mapM (firstInRow ctx m) spc
+      return (Just firsts,(n,ctx,slv))
+  where
+    firstInRow :: Context -> Model -> (Int,[(Int,a)]) -> IO (Int,a)
+    firstInRow ctx m (l,(x,p):xs) = do
+      v <- evalBool ctx m  =<< litToBoolean ctx (toVar i l x)
+      if (v==Just True) then return (x,p)
+        else firstInRow ctx m (l,xs)
+    firstInRow ctx m (l,[]) = error ("bad"++show l)
+  {-case ss >>= solve of
    [] -> Nothing
-   (solved:_) -> Just [ head [(x,p) | (x,p)<-ax, Just True<-[lookupVar (toVarNum i l x) solved]] | (l,ax) <- spc]
+   (solved:_) -> Just [ head [(x,p) | (x,p)<-ax, Just True<-[lookupVar (toVarNum i l x) solved]] | (l,ax) <- spc]-}
 
 
-toBoolean :: [[Prop]] -> Boolean
-toBoolean = foldl' (:&&:) Yes . map (foldl' (:||:) No . map litToBoolean)
+toBoolean :: Context -> [[Prop]] -> IO AST
+toBoolean ctx = mkAnd ctx <=< mapM (mkOr ctx <=< mapM (litToBoolean ctx))
 
-litToBoolean :: Prop -> Boolean
-litToBoolean (Lit n) = Var n
-litToBoolean (Neg (Lit n)) = Not (Var n)
+litToBoolean :: Context -> Prop -> IO AST
+litToBoolean ctx (Lit n) = mkIntSymbol ctx n >>= mkBoolVar ctx
+litToBoolean ctx (Neg (Lit n)) = mkNot ctx =<< litToBoolean ctx (Lit n)
+
+propToBoolean :: Context -> Prop -> IO AST
+propToBoolean ctx (Lit n) = litToBoolean ctx (Lit n)
+propToBoolean ctx (Neg p) = mkNot ctx =<< propToBoolean ctx p
+propToBoolean ctx (Conj xs) = mkAnd ctx =<< mapM (propToBoolean ctx) xs
+propToBoolean ctx (Disj xs) = mkOr ctx =<< mapM (propToBoolean ctx) xs
