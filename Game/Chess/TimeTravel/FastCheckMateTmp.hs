@@ -1,4 +1,4 @@
-module Game.Chess.TimeTravel.FastCheckMate
+module Game.Chess.TimeTravel.FastCheckMateTmp
 where
 import qualified Data.Map.Lazy as M
 import Control.Arrow

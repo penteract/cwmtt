@@ -23,6 +23,7 @@ library
     , Game.Chess.TimeTravel.Printing
     , Game.Chess.TimeTravel.BuildGame
     , Game.Chess.TimeTravel.FastCheckMate
+    , Game.Chess.TimeTravel.FastCheckMateTmp
   build-depends:
       base
     , containers
