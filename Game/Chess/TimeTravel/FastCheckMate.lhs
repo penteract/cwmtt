@@ -8,7 +8,7 @@ eliminate illegal sections of the hypercuboid until we find a legal moveset.
 First we get some imports out of the way - general utilities and things specific
 to this game.
 
-> import Data.Boolean.SatSolver
+> import Game.Chess.TimeTravel.SAT
 > import Control.Arrow(first)
 > import Control.Applicative((<|>))
 > import Data.List(foldl', nub, partition, sortOn, tails)
@@ -121,7 +121,6 @@ When we cut pieces out of a hypercuboid, the remainder may not still be a
 hypercuboid. To deal with this, we use a list of disjoint hypercuboids to
 represent a union.
 
-> type SearchSpace = Maybe SatSolver
 > type HCs a = [HC a]
 > contains :: HCs a -> [Int] -> Bool
 > contains hcs ixs = any (`contain` ixs) hcs
@@ -129,9 +128,7 @@ represent a union.
 'takePoint' finds a point that has not yet been ruled out.
 
 > takePoint :: Info -> SearchSpace -> Maybe [(Int,AxisLoc)]
-> takePoint i ss = case ss >>= solve of
->     Nothing -> Nothing
->     (Just solved) -> Just [ head [(x,p) | (x,p)<-ax, Just True<-[lookupVar (toVarNum i l x) solved]] | (l,ax) <- zip [0..] (fullSpace i)]
+> takePoint i ss = getPoint (zip [0..] (fullSpace i)) (numDims i) ss
 
 
 Building the search space
@@ -183,8 +180,10 @@ hybercube given as a list of pairs of Ints.
 >       sign = signum newL
 >       hc = map (zip [0..]) (nonBranchingAxes++branchingAxes)
 >       info = Info s nP (zip (map fst pbs ++ [newL,newL+sign .. newL+sign*(maxBranches-1)]) [0..]) hc (length hc)
->       ss = assertTrue (all' [exactlyOne info [(l,[x]) | (x,_) <- ax] | (l,ax) <- zip [0..] hc ]) newSatSolver
->     in up ss (info, ss)
+>       ss = addAssertion (all' [exactlyOne (numDims info) [(l,[x]) | (x,_) <- ax] | (l,ax) <- zip [0..] hc ]) (mkSpace hc)
+>       branchingNumbered = drop (length nonBranchingAxes) (zip [0..] hc)
+>       ss' = addAssertion (all' [toFormula (numDims info) [(l-1,[0]),(l,map fst xs)] | (l,(_:xs)) <- drop 1 branchingNumbered]) ss
+>     in (info, ss')
 > data Info = Info{
 >      state :: State
 >    , numPlayable :: Int
@@ -226,7 +225,6 @@ The most common type of piece we want to remove is a cross section. This is a
 subhypercuboid defined by a list of axes and subsets of each axis in the list.
 For axes not mentioned, the whole axis is implied.
 
-> type XSec = [(Int,[Int])]
 
 For example, given the hypercuboid
 hc = [[(0,()), (1,()), (2,())]
@@ -243,22 +241,6 @@ To make a cross section contining a single point, we can do the following:
 > xSecFromPoint :: [(Int,a)] -> XSec
 > xSecFromPoint xs = zip [0..] [[x] | (x,_)<-xs]
 
-> any' :: [Boolean] -> Boolean
-> any' = foldl' (:||:) No
-> all' :: [Boolean] -> Boolean
-> all' = foldl' (:&&:) Yes
-
-> toFormula :: Info -> XSec -> Sec
-> toFormula i xsec = Not (all' [any' [toVar i l x | x <- sec]  | (l,sec) <- xsec])
-
-> toVar :: Info -> Int -> Int -> Boolean
-> toVar i l x = Var (toVarNum i l x)
-
-> toVarNum :: Info -> Int -> Int -> Int
-> toVarNum i l x = l + x * numDims i
-
-> exactlyOne :: Info -> [(Int,[Int])] -> Boolean
-> exactlyOne i xs = Not (all' [any' [toVar i l x | x <- sec]  | (l,sec) <- xs]) :&&: any' [any' [toVar i l x | x <- sec]  | (l,sec) <- xs]
 
 We also consider another type of piece which would be inefficient to implement
 as a number of cross sections. This is used to make sure that if a piece
@@ -269,7 +251,6 @@ cutting away all points unless they either don't match any of the subsets (i.e.
 points that have nothing to do with the jump under consideration), or they match
 the first axis, and exactly one of the others.
 
-> type Sec = Boolean
 
 Note: Perhaps neater way of doing this would be to invert the first subset then
 include it with the others. In this case, we would care about the subset which
@@ -280,10 +261,10 @@ just use a more efficient data structure)
 
 
 > remove :: Info -> Sec -> SearchSpace -> SearchSpace
-> remove info sec ss = ss >>= assertTrue sec
+> remove info sec ss = addAssertion sec ss
 
 > removePoint :: Info -> [(Int,a)] -> SearchSpace -> SearchSpace
-> removePoint info p = remove info (toFormula info (xSecFromPoint p))
+> removePoint info p = remove info (toFormula (numDims info) (xSecFromPoint p))
 
 When removing a piece from a hypercuboid, we apply some sanity checks to make
 sure that if a new timeline with l-index l1 must be created (i.e. it cannot be
@@ -359,7 +340,7 @@ following:
 - If a piece leaves l, it must arrive on some board
 
 > arrivalsMatchLeaves :: Info -> HCell -> State -> [Sec]
-> arrivalsMatchLeaves i@(Info _ nP lmp hc _) cell s = noDups ++ srcMatches ++ mustAppear
+> arrivalsMatchLeaves (Info _ nP lmp hc i) cell s = noDups ++ srcMatches ++ mustAppear
 >   where
 >     arrivals = [(src,cl) | cl@(ax,(ix,loc))<- cell, Just src <- [arriveSource loc]]
 >     sortedArrivals = sortOn fst arrivals
@@ -391,7 +372,7 @@ played on. There are 2 ways this can go wrong:
   happen after this one.
 
 > jumpOrderConsistent :: Info -> HCell -> State -> [Sec]
-> jumpOrderConsistent i@(Info _ nP lmp hc _) cell s = noArrivesToPass ++ noLeavesAfterArrive
+> jumpOrderConsistent (Info _ nP lmp hc i) cell s = noArrivesToPass ++ noLeavesAfterArrive
 >   where
 >     (playable,new) = splitAt nP cell
 >     (jumpSrcs,jumpDests) = unzip [(((l,t),ax),((l',t'),ax))
@@ -439,7 +420,7 @@ after which the given cells have the given values.
 (cells here means 4D `squares`, not N-dimensional hypercuboid cells)
 
 > fromCells :: Info -> [((Int, Int, Int, Int), Cell)] -> HC AxisLoc -> [(Int, Int)] -> Sec
-> fromCells i@(Info s@(_,_,_,col) _ _ _ _) pcs hc lmp = toFormula i [
+> fromCells (Info s@(_,_,_,col) _ _ _ i) pcs hc lmp = toFormula i [
 >   filterAxis (\ (_, j) -> Just cell == (mBoard j >>= flip getAtBoard (x, y))
 >                           &&  nextT (snd (getLTFromLoc j)) col==t) ax hc
 >    | (pos@(l, t, x, y), cell) <- pcs,
@@ -454,7 +435,7 @@ We begin by finding which new timelines will be active when they are created,
 (including newly active ones) in the new present.
 
 > testPresent :: Info -> HCell -> State -> [Sec]
-> testPresent i@(Info s@(nw,wtls,btls,col) nP _ hc _) cell newS = secs
+> testPresent (Info s@(nw,wtls,btls,col) nP _ hc i) cell newS = secs
 >   where
 >     (playable,newBoards) = splitAt nP cell
 >     nb = length wtls - nw - 1

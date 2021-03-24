@@ -23,10 +23,13 @@ library
     , Game.Chess.TimeTravel.Printing
     , Game.Chess.TimeTravel.BuildGame
     , Game.Chess.TimeTravel.FastCheckMate
+    , Game.Chess.TimeTravel.FastCheckMateTmp
+    , Game.Chess.TimeTravel.SAT
   build-depends:
       base
     , containers
     , incremental-sat-solver
+    , z3
   default-language:
     Haskell2010
 

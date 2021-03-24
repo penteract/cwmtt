@@ -41,6 +41,7 @@ packages:
 #
 extra-deps:
 - incremental-sat-solver-0.1.8@sha256:9791328827d84cd7cd0428eac8d6155b2b0cea5a5e7f9cff17f304b93531ad8f,1164
+- z3-408.1@sha256:809968ed9329172448a7c89ce327cfa1c9632272d2a2c06211025257100c5c93,4116
 
 # Override default flag values for local packages and extra-deps
 # flags: {}
