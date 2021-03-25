@@ -1,3 +1,7 @@
+Warning: this documentation is out of date because we're now using a sat solver,
+so the remainder of the hypercuboid is represented by constraints in the SAT
+solver, rather than a list of sub-hypercuboids
+
 The goal of this module is to provide an efficient way to determine if a
 position is checkmate. The way we go about this is to build an N-dimensional
 hypercuboid containing all possible states after a moveset is made, then
