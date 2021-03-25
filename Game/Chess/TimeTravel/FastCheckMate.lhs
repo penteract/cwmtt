@@ -180,9 +180,9 @@ hybercube given as a list of pairs of Ints.
 >       sign = signum newL
 >       hc = map (zip [0..]) (nonBranchingAxes++branchingAxes)
 >       info = Info s nP (zip (map fst pbs ++ [newL,newL+sign .. newL+sign*(maxBranches-1)]) [0..]) hc (length hc)
->       ss = addAssertion (all' [exactlyOne (numDims info) [(l,[x]) | (x,_) <- ax] | (l,ax) <- zip [0..] hc ]) (mkSpace hc)
+>       ss = addAssertion (all' [atLeastOne [(l,[x]) | (x,_) <- ax] | (l,ax) <- zip [0..] hc ]) (mkSpace hc)
 >       branchingNumbered = drop (length nonBranchingAxes) (zip [0..] hc)
->       ss' = addAssertion (all' [toFormula (numDims info) [(l-1,[0]),(l,map fst xs)] | (l,(_:xs)) <- drop 1 branchingNumbered]) ss
+>       ss' = addAssertion (all' [toFormula [(l-1,[0]),(l,map fst xs)] | (l,(_:xs)) <- drop 1 branchingNumbered]) ss
 >     in (info, ss')
 > data Info = Info{
 >      state :: State
@@ -264,7 +264,7 @@ just use a more efficient data structure)
 > remove info sec ss = addAssertion sec ss
 
 > removePoint :: Info -> [(Int,a)] -> SearchSpace -> SearchSpace
-> removePoint info p = remove info (toFormula (numDims info) (xSecFromPoint p))
+> removePoint info p = remove info (toFormula (xSecFromPoint p))
 
 When removing a piece from a hypercuboid, we apply some sanity checks to make
 sure that if a new timeline with l-index l1 must be created (i.e. it cannot be
@@ -357,7 +357,7 @@ following:
 >     makeSec :: Coords -> Sec
 >     makeSec c@(l,_,_,_) = let
 >       Just ax = lookup l lmp in
->         exactlyOne i ((ax,[ ix | (ix,loc)<-hc!!ax, leaveSource loc /= Just c]):
+>         exactlyOne ((ax,[ ix | (ix,loc)<-hc!!ax, leaveSource loc /= Just c]):
 >           [(ax', [ ix | (ix,loc) <-locs, arriveSource loc==Just c]) | (ax',locs) <- zip [0..] hc, ax'/=ax])
 
 Give that there is a bijection between 'Arrive's and 'Leave's, we need to ensure
@@ -380,10 +380,10 @@ played on. There are 2 ways this can go wrong:
 >     conflicts = [ (lt,ax,ax')
 >                  | ((lt,ax),rest) <- zip jumpDests (tail$ tails jumpSrcs),
 >                      (lt',ax') <- rest, lt==lt' ]
->     noLeavesAfterArrive = [toFormula i [filterAxis (\ (_,j) -> Just lt == (fstPair<$>arriveDest j)) ax hc,
+>     noLeavesAfterArrive = [toFormula [filterAxis (\ (_,j) -> Just lt == (fstPair<$>arriveDest j)) ax hc,
 >                  filterAxis (\ (_,j) -> Just lt == (fstPair<$>arriveSource j)) ax' hc]
 >            | (lt,ax,ax') <- conflicts]
->     noArrivesToPass = [toFormula i [(ax,[ix]), filterAxis (\ (_,j) -> Just lt == (fstPair<$>arriveDest j)) ax' hc]
+>     noArrivesToPass = [toFormula [(ax,[ix]), filterAxis (\ (_,j) -> Just lt == (fstPair<$>arriveDest j)) ax' hc]
 >         | (ax,(ix,Pass lt)) <- playable, (lt',ax')<-jumpDests, lt==lt']
 
 
@@ -420,7 +420,7 @@ after which the given cells have the given values.
 (cells here means 4D `squares`, not N-dimensional hypercuboid cells)
 
 > fromCells :: Info -> [((Int, Int, Int, Int), Cell)] -> HC AxisLoc -> [(Int, Int)] -> Sec
-> fromCells (Info s@(_,_,_,col) _ _ _ i) pcs hc lmp = toFormula i [
+> fromCells (Info s@(_,_,_,col) _ _ _ i) pcs hc lmp = toFormula [
 >   filterAxis (\ (_, j) -> Just cell == (mBoard j >>= flip getAtBoard (x, y))
 >                           &&  nextT (snd (getLTFromLoc j)) col==t) ax hc
 >    | (pos@(l, t, x, y), cell) <- pcs,
@@ -455,7 +455,7 @@ depends on this pass, so we must include it in the cross section.
 >     mint = minimum [t | (ax,(ix,loc)) <- playable, (l,t) <- [getLTFromLoc loc] , abs l<=nA+length newActive]
 >     isBad = any ((==mint).snd) activePasses && all (\(ax,(ix,Arrive _ _ (_,dt,_,_))) -> dt>=mint) newActive
 >     secs = if isBad
->         then [ toFormula i (sec:rs++[ filterAxis (isArrive.snd ^&&^ \ (ix,Arrive _ _ (_,dt,_,_))-> (dt>=t)) ax hc | (ax,(ix,loc))<-newActive])
+>         then [ toFormula (sec:rs++[ filterAxis (isArrive.snd ^&&^ \ (ix,Arrive _ _ (_,dt,_,_))-> (dt>=t)) ax hc | (ax,(ix,loc))<-newActive])
 >           | (sec,t) <- activePasses, t==mint]
 >         else []
 

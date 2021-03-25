@@ -1,5 +1,5 @@
 {-# LANGUAGE BlockArguments #-}
-module Game.Chess.TimeTravel.SAT(SearchSpace, Sec, XSec, toFormula, exactlyOne, mkSpace, addAssertion, all', getPoint)
+module Game.Chess.TimeTravel.SAT(SearchSpace, Sec, XSec, toFormula, exactlyOne, atLeastOne, mkSpace, addAssertion, all', getPoint)
 where
 
 import Game.Chess.TimeTravel.Utils
@@ -23,28 +23,28 @@ withoutEach f (x:xs) = withoutEach' f ([],x,xs)
         withoutEach' f (xs,x,y:ys) = f (reverse xs ++ (y:ys)) x : withoutEach' f (x:xs,y,ys)
 
 
-data Prop = Conj [Prop] | Disj [Prop] | Neg Prop | Lit Int deriving (Eq,Show)
+data Prop = Conj [Prop] | Disj [Prop] | Neg Prop | Lit (Int,Int) deriving (Eq,Show)
 
 any' :: [Prop] -> Prop
 any' = Disj
 all' :: [Prop] -> Prop
 all' = Conj
 
-mkAx :: Int -> (Int,[Int]) -> Prop
-mkAx i (l,xs) = any' [toVar i l x | x <- xs]
+mkAx :: (Int,[Int]) -> Prop
+mkAx (l,xs) = any' [toVar l x | x <- xs]
 
-toFormula :: Int -> XSec -> Sec
-toFormula i xsec = Neg (all' [any' [toVar i l x | x <- sec]  | (l,sec) <- xsec])
+toFormula :: XSec -> Sec
+toFormula xsec = Neg (all' [any' [toVar l x | x <- sec]  | (l,sec) <- xsec])
 
-toVar :: Int -> Int -> Int -> Prop
-toVar i l x = Lit (toVarNum i l x)
+toVar :: Int -> Int -> Prop
+toVar l x = Lit (l, x)
 
-toVarNum :: Int -> Int -> Int -> Int
-toVarNum i l x = l + x * i
+exactlyOne :: [(Int,[Int])] -> Sec
+exactlyOne xs =
+  (any' $ withoutEach (\ rest x ->  all' (mkAx x : [Neg (mkAx r) | r <- rest])) xs)
 
-exactlyOne :: Int -> [(Int,[Int])] -> Sec
-exactlyOne i xs =
-  (any' $ withoutEach (\ rest x ->  all' (mkAx i x : [Neg (mkAx i r) | r <- rest])) xs)
+atLeastOne :: [(Int,[Int])] -> Sec
+atLeastOne xs = any' (map mkAx xs)
 
 mkSpace :: [[(Int,a)]] -> SearchSpace
 mkSpace hc = unsafePerformIO $ do
@@ -70,7 +70,7 @@ getPoint spc i (ctx,slv) = unsafePerformIO $ do
   where
     firstInRow :: Context -> Model -> (Int,[(Int,a)]) -> IO (Int,a)
     firstInRow ctx m (l,(x,p):xs) = do
-      v <- evalBool ctx m  =<< litToBoolean ctx (toVar i l x)
+      v <- evalBool ctx m  =<< litToBoolean ctx (toVar l x)
       if (v==Just True) then return (x,p)
         else firstInRow ctx m (l,xs)
     firstInRow ctx m (l,[]) = error ("bad"++show l)
@@ -79,7 +79,10 @@ toBoolean :: Context -> [[Prop]] -> IO AST
 toBoolean ctx = mkAnd ctx <=< mapM (mkOr ctx <=< mapM (litToBoolean ctx))
 
 litToBoolean :: Context -> Prop -> IO AST
-litToBoolean ctx (Lit n) = mkIntSymbol ctx n >>= mkBoolVar ctx
+litToBoolean ctx (Lit (l,x)) = do
+  v_l <- mkIntSymbol ctx l >>= mkIntVar ctx
+  c_x <- mkIntNum ctx x
+  mkEq ctx v_l c_x
 litToBoolean ctx (Neg (Lit n)) = mkNot ctx =<< litToBoolean ctx (Lit n)
 
 propToBoolean :: Context -> Prop -> IO AST
