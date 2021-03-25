@@ -24,6 +24,7 @@ commands = [
   ,("test",test)
   ,("checkmate",detectCheckmate)
   ,("fastmate",detectCheckmateFast)
+  ,("perftest",detectCheckmateAll)
   ,("debug",debug)
   ]
 
@@ -81,6 +82,7 @@ usage = putStr $ unlines[
   ,"convert - convert moves from my notation to Shad's"
   ,"checkmate - test if a situation is checkmate"
   ,"fastmate - quickly test if a situation is checkmate"
+  ,"perftest - test checkmate for all intermediate positions in a game"
   ]
 
 play = do
@@ -184,3 +186,17 @@ detectCheckmateFast = do
   case lms of
     [] -> putStrLn "Checkmate"
     (m:ms) -> putStrLn ("Not checkmate: " ++ displayMoveSet final m)
+
+
+detectCheckmateAll :: IO ()
+detectCheckmateAll = do
+  inp <- getContents
+  let Just (Notated tags mvs rest, _) = parsePGN inp
+      g = getGame tags
+  if null rest then return ()
+    else putStr "Unparsed: " >> print rest
+  let ss = rToListWarn (build g mvs)
+  hSetBuffering stdout NoBuffering
+  mapM_ (
+    putStr.show .length .take 1 .fastLegalMoveSets.fst
+    ) ss
