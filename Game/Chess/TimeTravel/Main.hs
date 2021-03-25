@@ -9,7 +9,7 @@ import Game.Chess.TimeTravel.Datatypes
 import Game.Chess.TimeTravel.Moves
 import Game.Chess.TimeTravel.BuildGame
 import Game.Chess.TimeTravel.Utils
-import Game.Chess.TimeTravel.FastCheckmate
+import Game.Chess.TimeTravel.FastCheckmateSat
 
 import System.Exit
 import System.Environment
@@ -24,6 +24,7 @@ commands = [
   ,("test",test)
   ,("checkmate",detectCheckmate)
   ,("fastmate",detectCheckmateFast)
+  ,("perftest",detectCheckmateAll)
   ,("debug",debug)
   ]
 
@@ -49,17 +50,16 @@ debug =  do
     let lms = legalMoveSets s
     let flms = fastLegalMoveSets s
     --putStrLn (drawState g s)
-    let nl = length lms --(take 1 lms)
-    let nf = length flms --(take 1 flms)
-    --mapM_ (putStrLn.displayMoveSet s) (take 100 flms)
-    --mapM_ (putStrLn.displayMoveSet s) (take 100 lms)
     print i
-    print nl
-    print nf
+    --print (length (take 1 lms))
+    --mapM_ (putStrLn.displayMoveSet s) (sort $ take 1 lms)
+    --print (length (nub $ sort $ take 2 flms))
+    --print (length flms)
+    print (length (take 1 flms))
+    mapM_ (putStrLn.displayMoveSet s) (take 1 flms)
     {-when (nl/=nf)(do
     putStrLn (drawState g s)
     print nf
-    print nl
     let nsls = (map (\ x -> (sort x,x)) lms)
     let nsfs = (map (\ x -> (sort x,x)) flms)
     let diff = sortingDiffOn fst nsls nsfs
@@ -82,6 +82,7 @@ usage = putStr $ unlines[
   ,"convert - convert moves from my notation to Shad's"
   ,"checkmate - test if a situation is checkmate"
   ,"fastmate - quickly test if a situation is checkmate"
+  ,"perftest - test checkmate for all intermediate positions in a game"
   ]
 
 play = do
@@ -185,3 +186,17 @@ detectCheckmateFast = do
   case lms of
     [] -> putStrLn "Checkmate"
     (m:ms) -> putStrLn ("Not checkmate: " ++ displayMoveSet final m)
+
+
+detectCheckmateAll :: IO ()
+detectCheckmateAll = do
+  inp <- getContents
+  let Just (Notated tags mvs rest, _) = parsePGN inp
+      g = getGame tags
+  if null rest then return ()
+    else putStr "Unparsed: " >> print rest
+  let ss = rToListWarn (build g mvs)
+  hSetBuffering stdout NoBuffering
+  mapM_ (
+    putStr.show .length .take 1 .fastLegalMoveSets.fst
+    ) ss

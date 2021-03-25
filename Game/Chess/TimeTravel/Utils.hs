@@ -3,6 +3,7 @@ module Game.Chess.TimeTravel.Utils where
 import System.IO.Unsafe(unsafePerformIO)
 import System.IO(hPutStrLn,stderr)
 import Data.List (sort,sortOn)
+import Control.Applicative (liftA2)
 
 up x y = unsafePerformIO (print x >> return y)
 upp x = up x x
@@ -155,3 +156,7 @@ easyDiffOn f (x:xs) (y:ys) = case compare (f x) (f y) of
   GT -> y:easyDiffOn f (x:xs) ys
 
 snd3 (a,b,c) = b
+
+infixr 1 ^&&^
+(^&&^) :: Applicative m => m Bool -> m Bool -> m Bool
+(^&&^) = liftA2 (&&)
