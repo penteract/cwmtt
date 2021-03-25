@@ -40,7 +40,7 @@ info about the state that doesn't change across possibilities), then search that
 structure for legal movesets.
 
 > fastLegalMoveSets :: State -> [MoveSet]
-> fastLegalMoveSets s = uncurry search (buildHC s)
+> fastLegalMoveSets s = uncurry (search 0) (buildHC s)
 
 Haskell note: 'uncurry' lets us pass 2 arguments at once. We could also define
 'search :: (Info, HCs AxisLoc) -> [MoveSet]', but using 'uncurry' is more
@@ -54,13 +54,13 @@ of the space. If we do find at least one reason it's illegal, then we can remove
 all points that are illegal for the same reason, and continue searching the
 remainder.
 
-> search :: Info -> SearchSpace -> [MoveSet]
-> search info space =
+> search :: Int -> Info -> SearchSpace -> [MoveSet]
+> search n info space =
 >   case takePoint info space of
->     (Nothing, _) -> []
+>     (Nothing, _) -> up n []
 >     (Just x, remainder) -> case findProblems info x of
->       [] -> makeMoveset x : search info (removePoint info x remainder)
->       (reason:_) -> search info (remove info reason remainder)
+>       [] -> up n makeMoveset x : search 0 info (removePoint info x remainder)
+>       (reason:_) -> search (n+1) info (remove info reason remainder)
 
 Note: There are many good reasons to remove points, most of which can sometimes
 remove large numbers of points. One important thing here is that we only remove
