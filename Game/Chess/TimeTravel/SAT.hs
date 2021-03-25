@@ -23,7 +23,7 @@ withoutEach f (x:xs) = withoutEach' f ([],x,xs)
         withoutEach' f (xs,x,y:ys) = f (reverse xs ++ (y:ys)) x : withoutEach' f (x:xs,y,ys)
 
 
-data Prop = Conj [Prop] | Disj [Prop] | Neg Prop | Lit (Int,Int) deriving (Eq,Show)
+data Prop = Conj [Prop] | Disj [Prop] | ExactlyOne [Prop] | Neg Prop | Lit (Int,Int) deriving (Eq,Show)
 
 any' :: [Prop] -> Prop
 any' = Disj
@@ -41,7 +41,8 @@ toVar l x = Lit (l, x)
 
 exactlyOne :: [(Int,[Int])] -> Sec
 exactlyOne xs =
-  (any' $ withoutEach (\ rest x ->  all' (mkAx x : [Neg (mkAx r) | r <- rest])) xs)
+  ExactlyOne (map mkAx xs)
+  -- (any' $ withoutEach (\ rest x ->  all' (mkAx x : [Neg (mkAx r) | r <- rest])) xs)
 
 atLeastOne :: [(Int,[Int])] -> Sec
 atLeastOne xs = any' (map mkAx xs)
@@ -90,3 +91,9 @@ propToBoolean ctx (Lit n) = litToBoolean ctx (Lit n)
 propToBoolean ctx (Neg p) = mkNot ctx =<< propToBoolean ctx p
 propToBoolean ctx (Conj xs) = mkAnd ctx =<< mapM (propToBoolean ctx) xs
 propToBoolean ctx (Disj xs) = mkOr ctx =<< mapM (propToBoolean ctx) xs
+propToBoolean ctx (ExactlyOne xs) = do
+  intsort <- mkIntSort ctx
+  c0 <- mkInt ctx 0 intsort
+  c1 <- mkInt ctx 1 intsort
+  xs' <- mapM (propToBoolean ctx) xs
+  mkEq ctx c1 =<< mkAdd ctx =<< mapM (\ b -> mkIte ctx b c1 c0) xs'
