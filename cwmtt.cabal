@@ -22,7 +22,7 @@ library
     , Game.Chess.TimeTravel.PGNParser
     , Game.Chess.TimeTravel.Printing
     , Game.Chess.TimeTravel.BuildGame
-    , Game.Chess.TimeTravel.FastCheckMate
+    , Game.Chess.TimeTravel.FastCheckmateSat
     , Game.Chess.TimeTravel.FastCheckMateTmp
     , Game.Chess.TimeTravel.SAT
   build-depends:

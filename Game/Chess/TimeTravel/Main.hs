@@ -9,7 +9,7 @@ import Game.Chess.TimeTravel.Datatypes
 import Game.Chess.TimeTravel.Moves
 import Game.Chess.TimeTravel.BuildGame
 import Game.Chess.TimeTravel.Utils
-import Game.Chess.TimeTravel.FastCheckMate
+import Game.Chess.TimeTravel.FastCheckmateSat
 
 import System.Exit
 import System.Environment
