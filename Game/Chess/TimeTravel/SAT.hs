@@ -10,7 +10,7 @@ import Data.List(foldl')
 import Control.Monad
 import GHC.IO.Unsafe(unsafePerformIO)
 
-type SearchSpace = (Int, Context, Solver)
+type SearchSpace = (Context, Solver)
 
 type Sec = Prop
 type XSec = [(Int,[Int])]
@@ -25,27 +25,16 @@ withoutEach f (x:xs) = withoutEach' f ([],x,xs)
 
 data Prop = Conj [Prop] | Disj [Prop] | Neg Prop | Lit Int deriving (Eq,Show)
 
-neg (Neg x) = x
-neg x = Neg x
-
 any' :: [Prop] -> Prop
 any' = Disj
 all' :: [Prop] -> Prop
 all' = Conj
-{-
-any' :: [Boolean] -> Prop
-any' [x] = x
-any' xs = foldl' (:||:) No xs
-all' :: [Boolean] -> Boolean
-all' [x] = x
-all' xs = foldl' (:&&:) Yes xs
--}
 
 mkAx :: Int -> (Int,[Int]) -> Prop
 mkAx i (l,xs) = any' [toVar i l x | x <- xs]
 
 toFormula :: Int -> XSec -> Sec
-toFormula i xsec = neg (all' [any' [toVar i l x | x <- sec]  | (l,sec) <- xsec])
+toFormula i xsec = Neg (all' [any' [toVar i l x | x <- sec]  | (l,sec) <- xsec])
 
 toVar :: Int -> Int -> Int -> Prop
 toVar i l x = Lit (toVarNum i l x)
@@ -55,29 +44,29 @@ toVarNum i l x = l + x * i
 
 exactlyOne :: Int -> [(Int,[Int])] -> Sec
 exactlyOne i xs =
-  (any' $ withoutEach (\ rest x ->  all' (mkAx i x : [neg (mkAx i r) | r <- rest])) xs)
+  (any' $ withoutEach (\ rest x ->  all' (mkAx i x : [Neg (mkAx i r) | r <- rest])) xs)
 
 mkSpace :: [[(Int,a)]] -> SearchSpace
 mkSpace hc = unsafePerformIO $ do
   ctx <- mkContext =<< mkConfig
   slv <- mkSolver ctx
-  return (10000,ctx,slv)
+  return (ctx,slv)
 
 addAssertion :: Sec -> SearchSpace -> SearchSpace
-addAssertion b (n,ctx,slv) = unsafePerformIO $ do
+addAssertion b (ctx,slv) = unsafePerformIO $ do
   constr <- propToBoolean ctx b
   solverAssertCnstr ctx slv constr
-  return (n,ctx,slv)
+  return (ctx,slv)
 
 getPoint :: [(Int,[(Int,a)])] -> Int -> SearchSpace -> (Maybe [(Int,a)], SearchSpace)
-getPoint spc i (n,ctx,slv) = unsafePerformIO $ do
+getPoint spc i (ctx,slv) = unsafePerformIO $ do
   (r, m') <- solverCheckAndGetModel ctx slv
   case r of
-    Unsat -> return (Nothing,(n,ctx,slv))
+    Unsat -> return (Nothing,(ctx,slv))
     Sat -> do
       let Just m = m'
       firsts <- mapM (firstInRow ctx m) spc
-      return (Just firsts,(n,ctx,slv))
+      return (Just firsts,(ctx,slv))
   where
     firstInRow :: Context -> Model -> (Int,[(Int,a)]) -> IO (Int,a)
     firstInRow ctx m (l,(x,p):xs) = do
