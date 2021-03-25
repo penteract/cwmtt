@@ -3,7 +3,7 @@ position is checkmate. The way we go about this is to build an N-dimensional
 hypercuboid containing all possible states after a moveset is made, then
 eliminate illegal sections of the hypercuboid until we find a legal moveset.
 
-> module Game.Chess.TimeTravel.FastCheckMate(fastLegalMoveSets) where
+> module Game.Chess.TimeTravel.FastCheckmate(fastLegalMoveSets) where
 
 First we get some imports out of the way - general utilities and things specific
 to this game.

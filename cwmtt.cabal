@@ -22,8 +22,8 @@ library
     , Game.Chess.TimeTravel.PGNParser
     , Game.Chess.TimeTravel.Printing
     , Game.Chess.TimeTravel.BuildGame
-    , Game.Chess.TimeTravel.FastCheckMate
-    , Game.Chess.TimeTravel.FastCheckMateTmp
+    , Game.Chess.TimeTravel.FastCheckmate
+    , Game.Chess.TimeTravel.FastCheckmateTmp
   build-depends:
       base
     , containers
