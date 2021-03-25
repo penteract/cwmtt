@@ -9,6 +9,7 @@ import Data.IntMap(IntMap)
 import Data.List(foldl')
 import Control.Monad
 import GHC.IO.Unsafe(unsafePerformIO)
+import Data.Maybe (fromJust)
 
 type SearchSpace = (Context, Solver)
 
@@ -66,15 +67,9 @@ getPoint spc i (ctx,slv) = unsafePerformIO $ do
     Unsat -> return (Nothing,(ctx,slv))
     Sat -> do
       let Just m = m'
-      firsts <- mapM (firstInRow ctx m) spc
+      firsts <- mapM (\ (l,xs) ->
+        ((xs!!).fromInteger.fromJust) <$> (evalInt ctx m =<< (mkIntSymbol ctx l >>= mkIntVar ctx)) ) spc
       return (Just firsts,(ctx,slv))
-  where
-    firstInRow :: Context -> Model -> (Int,[(Int,a)]) -> IO (Int,a)
-    firstInRow ctx m (l,(x,p):xs) = do
-      v <- evalBool ctx m  =<< litToBoolean ctx (toVar l x)
-      if (v==Just True) then return (x,p)
-        else firstInRow ctx m (l,xs)
-    firstInRow ctx m (l,[]) = error ("bad"++show l)
 
 toBoolean :: Context -> [[Prop]] -> IO AST
 toBoolean ctx = mkAnd ctx <=< mapM (mkOr ctx <=< mapM (litToBoolean ctx))
