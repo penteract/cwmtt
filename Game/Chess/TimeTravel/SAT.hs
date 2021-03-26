@@ -24,7 +24,7 @@ withoutEach f (x:xs) = withoutEach' f ([],x,xs)
         withoutEach' f (xs,x,y:ys) = f (reverse xs ++ (y:ys)) x : withoutEach' f (x:xs,y,ys)
 
 
-data Prop = All [Prop] | Any [Prop] | ExactlyOne [Prop]  | Not Prop | Sec (Int,[Int]) deriving (Eq,Show)
+data Prop = All [Prop] | Any [Prop] | ExactlyOne [Prop] | Iff Prop Prop  | J Int Int |  Not Prop | Sec (Int,[Int]) deriving (Eq,Show)
 
 
 mkSpace :: [[(Int,a)]] -> SearchSpace
@@ -67,3 +67,12 @@ propToBoolean ctx (ExactlyOne xs) = do
   c1 <- mkInt ctx 1 intsort
   xs' <- mapM (propToBoolean ctx) xs
   mkEq ctx c1 =<< mkAdd ctx =<< mapM (\ b -> mkIte ctx b c1 c0) xs'
+propToBoolean ctx (J ax ax') = do
+  intsort <- mkIntSort ctx
+  cax' <- mkInt ctx ax' intsort
+  v <- mkIntVar ctx =<< mkStringSymbol ctx (show ax)
+  mkEq ctx v cax'
+propToBoolean ctx (Iff p1 p2) = do
+  x1 <- propToBoolean ctx p1
+  x2 <- propToBoolean ctx p2
+  mkIff ctx x1 x2

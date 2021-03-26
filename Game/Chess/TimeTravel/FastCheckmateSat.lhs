@@ -184,10 +184,16 @@ hybercube given as a list of pairs of Ints.
 >       sign = signum newL
 >       hc = map (zip [0..]) (nonBranchingAxes++branchingAxes)
 >       info = Info s nP (zip (map fst pbs ++ [newL,newL+sign .. newL+sign*(maxBranches-1)]) [0..]) hc (length hc)
->       ss = addAssertion (All [Any [Sec (l,[x]) | (x,_) <- ax] | (l,ax) <- zip [0..] hc ]) (mkSpace hc)
+>       ss = addAssertion (All [Any [Sec (ax,[x]) | (x,_) <- xs] | (ax,xs) <- zip [0..] hc ]) (mkSpace hc)
 >       branchingNumbered = drop (length nonBranchingAxes) (zip [0..] hc)
->       ss' = addAssertion (All [Not$All [Sec(l-1,[0]),Sec(l,map fst xs)] | (l,(_:xs)) <- drop 1 branchingNumbered]) ss
->     in (info, ss')
+>       ss' = addAssertion (All [Not$All [Sec(ax-1,[0]),Sec(ax,map fst xs)] | (ax,(_:xs)) <- drop 1 branchingNumbered]) ss
+>       jinfos = [ (Sec (ax,[ix]), [Sec (ax', [ ix' | (ix',loc) <-locs, arriveSource loc==Just c]) | (ax',locs) <- zip [0..] hc, ax'/=ax])
+>                          | (ax,axis) <- zip [0..] nonBranchingAxes, (ix,Just c) <- zip [0..] (map leaveSource axis) ]
+>       prop = All [ All (Any [Not lv, Any ars] :
+>                         [Iff ar (All [lv, J ax ax']) | ar@(Sec (ax',_))<-ars])
+>                                | (lv@(Sec (ax,_)),ars) <- jinfos]
+>       ss'' = addAssertion prop ss'
+>     in (info, ss'')
 > data Info = Info{
 >      state :: State
 >    , numPlayable :: Int
@@ -195,6 +201,8 @@ hybercube given as a list of pairs of Ints.
 >    , fullSpace :: HC AxisLoc
 >    , numDims :: Int
 >  }
+
+
 
 
 In 'toLocs', we split up jumping moves into a source and a destination. Hops
@@ -315,7 +323,7 @@ about the assumtions made by the code doing those tests.
 > findProblems info@(Info s _ _ _ _) point =
 >   let cell = zip [0..] point
 >       s' = apply (makeMoveset point) s
->     in arrivalsMatchLeaves info cell s' ++
+>     in --arrivalsMatchLeaves info cell s' ++
 >       jumpOrderConsistent info cell s' ++
 >       testPresent info cell s' ++
 >       findChecks info cell s'
@@ -344,25 +352,26 @@ following:
 - If a piece leaves l, it must arrive on some board
 
 > arrivalsMatchLeaves :: Info -> HCell -> State -> [Sec]
-> arrivalsMatchLeaves (Info _ nP lmp hc i) cell s = noDups ++ srcMatches ++ mustAppear
+> arrivalsMatchLeaves info@(Info _ nP lmp hc i) cell s = noDups ++ srcMatches ++ mustAppear
 >   where
 >     arrivals = [(src,cl) | cl@(ax,(ix,loc))<- cell, Just src <- [arriveSource loc]]
 >     sortedArrivals = sortOn fst arrivals
->     noDups = [ makeSec c |
+>     noDups = [ makeSec info c |
 >         ((c,(ax,_)),(c',(ax',_))) <- zip sortedArrivals (tail sortedArrivals), c==c'
 >       ]
->     srcMatches = [ makeSec c |
+>     srcMatches = [ makeSec info c |
 >        (c@(l,_,_,_),(ax,_)) <- arrivals,
 >        ax' <- [fromJust $ lookup l lmp], Just c /= (leaveSource.snd.snd) (cell!!ax')
 >       ]
->     mustAppear = [ makeSec c |
+>     mustAppear = [ makeSec info c |
 >       (Just c)<- map (leaveSource.snd.snd) cell, c `notElem` map fst arrivals
 >      ]
->     makeSec :: Coords -> Sec
->     makeSec c@(l,_,_,_) = let
->       Just ax = lookup l lmp in
->         ExactlyOne (Sec (ax,[ ix | (ix,loc)<-hc!!ax, leaveSource loc /= Just c]):
->           [Sec (ax', [ ix | (ix,loc) <-locs, arriveSource loc==Just c]) | (ax',locs) <- zip [0..] hc, ax'/=ax])
+
+> makeSec :: Info -> Coords -> Sec
+> makeSec (Info _ _ lmp hc _) c@(l,_,_,_) = let
+>   Just ax = lookup l lmp in
+>     ExactlyOne (Sec (ax,[ ix | (ix,loc)<-hc!!ax, leaveSource loc /= Just c]):
+>       [Sec (ax', [ ix | (ix,loc) <-locs, arriveSource loc==Just c]) | (ax',locs) <- zip [0..] hc, ax'/=ax])
 
 Give that there is a bijection between 'Arrive's and 'Leave's, we need to ensure
 that there is some order in which the moves could be applied that results in the
