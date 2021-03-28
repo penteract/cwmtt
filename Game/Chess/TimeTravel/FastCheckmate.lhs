@@ -57,7 +57,7 @@ remainder.
 > search info remaining =
 >   case takePoint remaining of
 >     Nothing -> []
->     (Just x) -> case findProblems info x remaining of
+>     (Just x) -> case findProblems info x of
 >       [] -> makeMoveset x : search info (removePoint info x remaining)
 >       (reason:_) -> search info (remove info reason remaining)
 
@@ -177,12 +177,14 @@ hybercube given as a list of pairs of Ints.
 
 >       nP = length playableTimelines
 >       sign = signum newL
->       info = Info s nP (zip (map fst pbs ++ [newL,newL+sign .. newL+sign*(maxBranches-1)]) [0..])
->     in (info, [map (zip [0..]) (nonBranchingAxes++branchingAxes)])
+>       hc = map (zip [0..]) (nonBranchingAxes++branchingAxes)
+>       info = Info s nP (zip (map fst pbs ++ [newL,newL+sign .. newL+sign*(maxBranches-1)]) [0..]) hc
+>     in (info, [hc])
 > data Info = Info{
 >      state :: State
 >    , numPlayable :: Int
 >    , lMap :: [(Int,Int)] -- maps L index to axis
+>    , fullSpace :: HC AxisLoc
 >  }
 
 
@@ -307,7 +309,7 @@ will be at the start. It also gets rid of any empty hypercuboids (those where
 some axis is empty)
 
 > sanity :: Info -> HC AxisLoc -> [HC AxisLoc]
-> sanity (Info _ nP _) hc = if any null hc then [] else res
+> sanity (Info _ nP _ _) hc = if any null hc then [] else res
 >   where
 >     (playFrom,new) = splitAt nP hc
 >     (bit,newres) = foldr (\ (n:ns) (b,rest) -> (b || not (isPass (snd n)), (if b && isPass(snd n) then ns else n:ns):rest)) (False,[]) new
@@ -340,15 +342,14 @@ We make sure that it represents a consistent moveset before testing for checks
 and ensuring that the present is moved, or we would need to be more careful
 about the assumtions made by the code doing those tests.
 
-> findProblems :: Info -> [(Int,AxisLoc)] -> HCs AxisLoc -> [Sec]
-> findProblems info@(Info s _ _) point hcs =
->   let hc = head hcs
->       cell = zip [0..] point
+> findProblems :: Info -> [(Int,AxisLoc)] -> [Sec]
+> findProblems info@(Info s _ _ _) point =
+>   let cell = zip [0..] point
 >       s' = apply (makeMoveset point) s
->     in arrivalsMatchLeaves info cell s' hc ++
->       jumpOrderConsistent info cell s' hc ++
->       testPresent info cell s' hc ++
->       findChecks info cell s' hc
+>     in arrivalsMatchLeaves info cell s' ++
+>       jumpOrderConsistent info cell s' ++
+>       testPresent info cell s' ++
+>       findChecks info cell s'
 
 Note: We rely on laziness here. Only the first problem we find gets examined,
 so Haskell won't waste time computing the others (and it doesn't matter if they
@@ -373,8 +374,8 @@ following:
 - If there is a board where a piece arrives from l, that piece must leave l
 - If a piece leaves l, it must arrive on some board
 
-> arrivalsMatchLeaves :: Info -> HCell -> State -> HC AxisLoc -> [Sec]
-> arrivalsMatchLeaves (Info _ nP lmp) cell s hc = noDups ++ srcMatches ++ mustAppear
+> arrivalsMatchLeaves :: Info -> HCell -> State -> [Sec]
+> arrivalsMatchLeaves (Info _ nP lmp hc) cell s = noDups ++ srcMatches ++ mustAppear
 >   where
 >     arrivals = [(src,cl) | cl@(ax,(ix,loc))<- cell, Just src <- [arriveSource loc]]
 >     sortedArrivals = sortOn fst arrivals
@@ -406,8 +407,8 @@ played on. There are 2 ways this can go wrong:
 - If the destination board is the source of a branch which was supposed to
   happen after this one.
 
-> jumpOrderConsistent :: Info -> HCell -> State -> HC AxisLoc -> [Sec]
-> jumpOrderConsistent (Info _ nP lmp) cell s hc = noArrivesToPass ++ noLeavesAfterArrive
+> jumpOrderConsistent :: Info -> HCell -> State -> [Sec]
+> jumpOrderConsistent (Info _ nP lmp hc) cell s = noArrivesToPass ++ noLeavesAfterArrive
 >   where
 >     (playable,new) = splitAt nP cell
 >     (jumpSrcs,jumpDests) = unzip [(((l,t),ax),((l',t'),ax))
@@ -425,8 +426,8 @@ played on. There are 2 ways this can go wrong:
 This is almost exactly the same code from the naive search
 ('Game.Chess.TimeTravel.Moves'), it just tracks the boards involved in a check.
 
-> findChecks :: Info -> HCell -> State -> HC AxisLoc -> [Sec]
-> findChecks (Info oldS _ lmp) cell newS@(_,_,_,playerCol) hc = do
+> findChecks :: Info -> HCell -> State -> [Sec]
+> findChecks (Info oldS _ lmp hc) cell newS@(_,_,_,playerCol) = do
 >   (l,t) <- playableBoards newS
 >   let Just b = getBoard newS (l,t)
 >   (file,x) <- zip b [0..]
@@ -469,8 +470,8 @@ We begin by finding which new timelines will be active when they are created,
 ('newActive') and then check whether there are any passes on active timelines
 (including newly active ones) in the new present.
 
-> testPresent :: Info -> HCell -> State -> HC AxisLoc -> [Sec]
-> testPresent (Info s@(nw,wtls,btls,col) nP _) cell newS hc = secs
+> testPresent :: Info -> HCell -> State -> [Sec]
+> testPresent (Info s@(nw,wtls,btls,col) nP _ hc) cell newS = secs
 >   where
 >     (playable,newBoards) = splitAt nP cell
 >     nb = length wtls - nw - 1
@@ -490,7 +491,7 @@ depends on this pass, so we must include it in the cross section.
 >     mint = minimum [t | (ax,(ix,loc)) <- playable, (l,t) <- [getLTFromLoc loc] , abs l<=nA+length newActive]
 >     isBad = any ((==mint).snd) activePasses && all (\(ax,(ix,Arrive _ _ (_,dt,_,_))) -> dt>=mint) newActive
 >     secs = if isBad
->         then [ XSec (sec:rs++[ filterAxis (\ (ix,Arrive _ _ (_,dt,_,_))-> (dt>=t)) ax hc | (ax,(ix,loc))<-newActive])
+>         then [ XSec (sec:rs++[ filterAxis (isArrive.snd ^&&^ \ (ix,Arrive _ _ (_,dt,_,_))-> (dt>=t)) ax hc | (ax,(ix,loc))<-newActive])
 >           | (sec,t) <- activePasses, t==mint]
 >         else []
 
