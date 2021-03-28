@@ -294,7 +294,7 @@ just use a more efficient data structure)
 >       in or (zipWith ((&&).fst) inouts outs) -- there is at least one axis with nonempty 'in'tersection such that the rest have nonempty 'out'ersection
 
 > remove :: Info -> Sec -> HCs AxisLoc -> HCs AxisLoc
-> remove info sec hcs = let (overlap,rest)=span (overlaps sec) hcs in
+> remove info sec hcs = let (overlap,rest) = if isXSec sec then span (overlaps sec) hcs else ([head hcs],tail hcs) in
 >     (overlap >>= remove' sec >>= sanity info ) ++ rest
 >   where
 >     remove' (XSec xsec) hc = cut hc xsec
@@ -303,6 +303,8 @@ just use a more efficient data structure)
 >           exactlyOne nobranches (j:js) acc =  let (withJ,noJ) = split nobranches j  in
 >              exactlyOne noJ js (withJ:map (snd.flip split j) acc)
 >       in exactlyOne hc branches []
+>     isXSec (XSec _) = True
+>     isXSec _ = False
 
 > removePoint :: Info -> [(Int,a)] -> HCs AxisLoc -> HCs AxisLoc
 > removePoint info p = remove info (XSec (xSecFromPoint p))
