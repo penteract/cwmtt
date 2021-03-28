@@ -8,7 +8,7 @@ eliminate illegal sections of the hypercuboid until we find a legal moveset.
 First we get some imports out of the way - general utilities and things specific
 to this game.
 
-> import Control.Arrow(first)
+> import Control.Arrow(first,(***))
 > import Control.Applicative((<|>))
 > import Data.List(foldl', nub, partition, sortOn, tails)
 > import Data.Maybe(listToMaybe, fromJust)
@@ -276,7 +276,7 @@ cutting away all points unless they either don't match any of the subsets (i.e.
 points that have nothing to do with the jump under consideration), or they match
 the first axis, and exactly one of the others.
 
-> data Sec = XSec XSec | XmatchesOneY (Int,[Int]) [(Int,[Int])] deriving (Eq,Show)
+> data Sec = XSec XSec | ExactlyOne [(Int,[Int])] deriving (Eq,Show)
 
 Note: Perhaps neater way of doing this would be to invert the first subset then
 include it with the others. In this case, we would care about the subset which
@@ -285,18 +285,24 @@ match exactly one axis.
 TODO: Consider using indicator functions rather than lists of coordinates (or
 just use a more efficient data structure)
 
+> overlaps :: Sec -> HC AxisLoc -> Bool
+> overlaps (XSec []) hc = True
+> overlaps (XSec ((ax,pts):secs)) hc = any ((`elem` pts).fst) (hc!!ax) && overlaps (XSec secs) hc
+> overlaps (ExactlyOne branches) hc =
+>     let inouts =  map ((not.null *** not.null) . split hc) branches
+>         outs = zipWith (&&) (scanr ((&&).snd) True (tail inouts)) (scanl (flip ((&&).snd)) True inouts)
+>       in or (zipWith ((&&).fst) inouts outs) -- there is at least one axis with nonempty 'in'tersection such that the rest have nonempty 'out'ersection
 
 > remove :: Info -> Sec -> HCs AxisLoc -> HCs AxisLoc
-> remove info sec (hc:hcs) = (remove' hc sec >>= sanity info ) ++ hcs
+> remove info sec hcs = let (overlap,rest)=span (overlaps sec) hcs in
+>     (overlap >>= remove' sec >>= sanity info ) ++ rest
 >   where
->     remove' hc (XSec xsec) = cut hc xsec
->     remove' hc m@(XmatchesOneY leave branches) =
->       let (leaving, notleaving) = split hc leave
->           exactlyOne nobranches [] acc = acc -- could be optimized
+>     remove' (XSec xsec) hc = cut hc xsec
+>     remove'  m@(ExactlyOne branches) hc =
+>       let exactlyOne nobranches [] acc = acc -- could be optimized
 >           exactlyOne nobranches (j:js) acc =  let (withJ,noJ) = split nobranches j  in
 >              exactlyOne noJ js (withJ:map (snd.flip split j) acc)
->       in foldl' (\ hc j -> snd (split hc j)) notleaving branches -- No leave and no branches there
->            : exactlyOne leaving branches []
+>       in exactlyOne hc branches []
 
 > removePoint :: Info -> [(Int,a)] -> HCs AxisLoc -> HCs AxisLoc
 > removePoint info p = remove info (XSec (xSecFromPoint p))
@@ -392,8 +398,8 @@ following:
 >     makeSec :: Coords -> Sec
 >     makeSec c@(l,_,_,_) = let
 >       Just ax = lookup l lmp in
->         XmatchesOneY (ax,[ ix | (ix,loc)<-hc!!ax, leaveSource loc == Just c])
->           [(ax', [ ix | (ix,loc) <-locs, arriveSource loc==Just c]) | (ax',locs) <- zip [0..] hc, ax'/=ax]
+>         ExactlyOne ((ax,[ ix | (ix,loc)<-hc!!ax, leaveSource loc /= Just c]):
+>           [(ax', [ ix | (ix,loc) <-locs, arriveSource loc==Just c]) | (ax',locs) <- zip [0..] hc, ax'/=ax])
 
 
 Give that there is a bijection between 'Arrive's and 'Leave's, we need to ensure
