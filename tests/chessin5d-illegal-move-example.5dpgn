@@ -1,0 +1,35 @@
+[Board "Standard"]
+[Mode "5D"]
+1. a4 / b5
+2. axb5 / c6
+3. c4 / cxb5
+4. b3 / bxc4
+5. bxc4 / d5
+6. d3 / e6
+7. cxd5 / exd5
+8. e4 / dxe4
+9. dxe4 / f5
+10. f3 / g6
+11. exf5 / gxf5
+12. g4 / fxg4
+13. fxg4 / h5
+14. gxh5 / Rxh5
+15. Rxa7 / Rxh2
+16. Rb7 / Rxh1
+17. Rxb8 / Ke7
+18. Ke2 / Rxg1
+19. Rxc8 / Rxf1
+20. Rxd8 / Rxd1
+21. Rxf8 / Rxc1
+22. Rxg8 / Rxb1
+23. Rb8 / Rbxb8
+24. (0T24)Ke2>>(0T23)d2 (~T2) (>L1) / (1T23)Rba1
+25. (1T24)Rg8>>(0T24)g8 (>L2) / (0T24)Rh8 (1T24)Kd6
+26. (1T25)Kd2>(0T25)c1 / (0T25)Rh2 (1T25)Kd5
+27. (0T26)Kb1 (1T26)Kf3 / (0T26)Kd6 (1T26)Kc4
+28. (1T27)Kf3>(0T27)f4 / (0T27)Kd5 (1T27)Kb3
+29. (0T28)Kf4>(1T28)f5 / (0T28)Kd5>(1T28)d4
+30. (1T29)Kf5>(0T29)f6 / (1T29)Kd4>(0T29)d3
+31. (0T30)Kf6>(1T30)f6 / (0T30)Kd3>(1T30)d2
+32. (1T31)Kf6>(0T31)f6 / (1T31)Kd2>(0T31)d1
+33. (0T32)Kf6>(1T32)f6 / (0T32)Ra1 (1T32)Rb8
