@@ -89,7 +89,6 @@ play = do
   let s1 = (0,[(1,[sb])],[(0,[])],White)
   loop 1 standard s1 True
 
--- |
 loop :: Int -> Game -> State -> Bool -> IO ()
 loop n g s b = do
   when b $ putStr$ drawState g s
