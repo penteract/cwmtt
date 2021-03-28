@@ -1,5 +1,5 @@
 {-# LANGUAGE BlockArguments #-}
-module Game.Chess.TimeTravel.SAT(SearchSpace, Sec, Prop(..), mkSpace, addAssertion, getPoint)
+module Game.Chess.TimeTravel.SAT(SearchSpace, Sec, Prop(..), (<->), (-->), mkSpace, addAssertion, getPoint)
 where
 
 import Game.Chess.TimeTravel.Utils
@@ -24,8 +24,11 @@ withoutEach f (x:xs) = withoutEach' f ([],x,xs)
         withoutEach' f (xs,x,y:ys) = f (reverse xs ++ (y:ys)) x : withoutEach' f (x:xs,y,ys)
 
 
-data Prop = All [Prop] | Any [Prop] | ExactlyOne [Prop] | Iff Prop Prop  | J Int Int |  Not Prop | Sec (Int,[Int]) deriving (Eq,Show)
+data Prop = All [Prop] | Any [Prop] | ExactlyOne [Prop] | Iff Prop Prop  | J Int Int | Jlt Int Int |  Not Prop | Sec (Int,[Int]) deriving (Eq,Show)
 
+(<->) = Iff
+
+a --> b = Any [Not a, b]
 
 mkSpace :: [[(Int,a)]] -> SearchSpace
 mkSpace hc = unsafePerformIO $ do
@@ -72,6 +75,11 @@ propToBoolean ctx (J ax ax') = do
   cax' <- mkInt ctx ax' intsort
   v <- mkIntVar ctx =<< mkStringSymbol ctx (show ax)
   mkEq ctx v cax'
+propToBoolean ctx (Jlt ax ax') = do
+  intsort <- mkIntSort ctx
+  cax' <- mkInt ctx ax' intsort
+  v <- mkIntVar ctx =<< mkStringSymbol ctx (show ax)
+  mkLt ctx v cax'
 propToBoolean ctx (Iff p1 p2) = do
   x1 <- propToBoolean ctx p1
   x2 <- propToBoolean ctx p2

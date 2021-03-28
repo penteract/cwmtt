@@ -13,7 +13,7 @@ First we get some imports out of the way - general utilities and things specific
 to this game.
 
 > import Game.Chess.TimeTravel.SAT
-> import Control.Arrow(first)
+> import Control.Arrow(first,second)
 > import Control.Applicative((<|>))
 > import Data.List(foldl', nub, partition, sortOn, tails)
 > import Data.Maybe(listToMaybe, fromJust)
@@ -160,7 +160,7 @@ Next we split these up by axis location, remove duplicates within each axis
 add the possibility of a pass (choosing not to move on a board).
 
 >       locsOn l = nub [ loc | (l',loc) <- allLocs, l'==l]
->       nonBranchingAxes = [ locsOn l ++ [Pass (l,t)] | (l,t) <- pbs]
+>       nonBranchingAxes = [ zip [0..] (locsOn l ++ [Pass (l,t)]) | (l,t) <- pbs]
 
 Note: some of the details here have large performance implications - putting the
 pass at the end gives a speedup by a factor of around 500 on tests/silly.5dpgn
@@ -171,8 +171,8 @@ physical (same-board) moves first)
 New branches could appear on different timelines, so we make a copy of the
 axis containing new branches for each timeline that could be created.
 
->       maxBranches = length$ filter (any isLeave) nonBranchingAxes
->       newBoards = Pass undefined : locsOn newL
+>       maxBranches = length$ filter (any (isLeave . snd)) nonBranchingAxes
+>       newBoards = zip [0..] (Pass undefined : locsOn newL)
 >       branchingAxes = replicate maxBranches newBoards
 
 The info consists of the state without any moves played, the number of playable
@@ -182,18 +182,23 @@ hybercube given as a list of pairs of Ints.
 
 >       nP = length playableTimelines
 >       sign = signum newL
->       hc = map (zip [0..]) (nonBranchingAxes++branchingAxes)
->       info = Info s nP (zip (map fst pbs ++ [newL,newL+sign .. newL+sign*(maxBranches-1)]) [0..]) hc (length hc)
+>       hc = nonBranchingAxes++branchingAxes
+>       hcNumbered = zip [0..] hc
+>       lmp = zip (map fst pbs ++ [newL,newL+sign .. newL+sign*(maxBranches-1)]) [0..]
+>       info = Info s nP lmp hc (length hc)
 >       ss = addAssertion (All [Any [Sec (ax,[x]) | (x,_) <- xs] | (ax,xs) <- zip [0..] hc ]) (mkSpace hc)
->       branchingNumbered = drop (length nonBranchingAxes) (zip [0..] hc)
+>       branchingNumbered = drop (length nonBranchingAxes) hcNumbered
 >       ss' = addAssertion (All [Not$All [Sec(ax-1,[0]),Sec(ax,map fst xs)] | (ax,(_:xs)) <- drop 1 branchingNumbered]) ss
->       jinfos = [ (Sec (ax,[ix]), [Sec (ax', [ ix' | (ix',loc) <-locs, arriveSource loc==Just c]) | (ax',locs) <- zip [0..] hc, ax'/=ax])
->                          | (ax,axis) <- zip [0..] nonBranchingAxes, (ix,Just c) <- zip [0..] (map leaveSource axis) ]
->       prop = All [ All (Any [Not lv, Any ars] :
->                         [Iff ar (All [lv, J ax ax']) | ar@(Sec (ax',_))<-ars])
+>       jinfos = [ (Sec (ax,[ix]), [Sec (ax', [ ix' | (ix',loc) <-locs, arriveSource loc==Just c]) | (ax',locs) <- hcNumbered, ax'/=ax])
+>                          | (ax,axis) <- zip [0..] nonBranchingAxes, (ix,Just c) <- (map (second leaveSource) axis) ]
+>       arrivesMatchLeavesProp = All [ All ( lv --> Any ars :
+>                         [ar <-> (All [lv, J ax ax']) | ar@(Sec (ax',_))<-ars])
 >                                | (lv@(Sec (ax,_)),ars) <- jinfos]
->       ss'' = addAssertion prop ss'
->     in (info, ss'')
+>       ss'' = addAssertion arrivesMatchLeavesProp ss'
+>       consistentProp = All [ All [ Sec (ax', landOnAx) -->  All [Jlt ax ax', Not (Sec (ax,[length axis - 1])) ] | ax' <- map fst (drop (length pbs) hcNumbered)]
+>                     | ((ax,axis),lt) <- zip hcNumbered pbs, landOnAx <- [[ix | (ix,Arrive _ _ (l',t',_,_))<- newBoards, (l',t')==lt]] ]
+>       ss''' = addAssertion consistentProp ss''
+>     in (info, ss''')
 > data Info = Info{
 >      state :: State
 >    , numPlayable :: Int
@@ -201,9 +206,6 @@ hybercube given as a list of pairs of Ints.
 >    , fullSpace :: HC AxisLoc
 >    , numDims :: Int
 >  }
-
-
-
 
 In 'toLocs', we split up jumping moves into a source and a destination. Hops
 (moves between active boards) could also be branches, so we create an extra
@@ -324,7 +326,7 @@ about the assumtions made by the code doing those tests.
 >   let cell = zip [0..] point
 >       s' = apply (makeMoveset point) s
 >     in --arrivalsMatchLeaves info cell s' ++
->       jumpOrderConsistent info cell s' ++
+>       --jumpOrderConsistent info cell s' ++
 >       testPresent info cell s' ++
 >       findChecks info cell s'
 
