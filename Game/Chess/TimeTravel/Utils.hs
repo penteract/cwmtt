@@ -10,6 +10,8 @@ upp x = up x x
 
 upi = unsafePerformIO
 
+ups x y = unsafePerformIO (putStrLn x >> return y)
+
 warn msg val = unsafePerformIO$ do
   hPutStrLn stderr msg
   return val

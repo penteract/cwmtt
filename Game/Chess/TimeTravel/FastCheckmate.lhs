@@ -127,6 +127,9 @@ represent a union.
 > contains :: HCs a -> [Int] -> Bool
 > contains hcs ixs = any (`contain` ixs) hcs
 
+> pp :: SearchSpace -> String
+> pp = unlines . map (unlines . map (\ ax -> show ax))
+
 'takePoint' finds a point from the first hypercuboid in a list which contains one.
 
 It makes sure that jumps match leaves
@@ -224,18 +227,19 @@ hybercube given as a list of pairs of Ints.
 > movesFrom :: State -> Int -> [(Int,Int)]-> (Int,(Int,Int)) -> ([AxisLoc],[(Int,AxisLoc)])
 > movesFrom s newL pbs (ax,(l,t)) = let
 >     mvs = legalMovesFromBoard s (l,t)
->     generate :: Int -> Maybe Coords -> [Move] -> ([AxisLoc],[(Int,AxisLoc)])
+>     generate :: Int -> Maybe (Int,Coords) -> [Move] -> ([AxisLoc],[(Int,AxisLoc)])
 >     generate _ _ [] = ([],[])
 >     generate n c (m:ms) = let
 >         ty = getType pbs m
->         isNewSrc = ty==SameBoard || Just (fst (head m)) /= c
+>         isNewSrc = ty==SameBoard || Just (fst (head m)) /= (snd <$> c)
 >         nextN = n + fromEnum isNewSrc
+>         thisN = if isNewSrc then n else fst (fromJust c)
 >         --
->         locs = toLocs s l newL m (getType pbs m) (ax,nextN)
+>         locs = toLocs s l newL m (getType pbs m) (ax,thisN)
 >         (fromL,jmps) = partition ((==l).fst) locs
 >         fromL' = [x | isNewSrc, x <- map snd fromL]
 >         in ((fromL' ++) *** (jmps++))
->            (generate nextN (if ty==SameBoard then c else Just (fst (head m))) ms)
+>            (generate nextN (if ty==SameBoard then c else Just (thisN, fst (head m))) ms)
 >     in generate 0 Nothing mvs
 
 In 'toLocs', we split up jumping moves into a source and a destination. Hops
@@ -563,10 +567,10 @@ it's an opportunity for inefficiency.
 Helper functions for working with axis locations:
 
 > instance Show AxisLoc where
->   show (Phy _ m) = "Phy"++show m
->   show (Arrive _ s t _) = "Arrive"++show s++ show t
->   show (Leave _ m) = "Leave"++show m
->   show (Pass _) = "Pass"++show "unwilling to display"
+>   show (Phy _ m) = "Phy" -- ++show m
+>   show (Arrive _ s t axix) = "Ar"++show s++ show axix
+>   show (Leave _ m) = "Lv"++show m
+>   show (Pass _) = "Pass" -- ++show "unwilling to display"
 >
 > isLeave (Leave _ _) = True
 > isLeave _ = False
