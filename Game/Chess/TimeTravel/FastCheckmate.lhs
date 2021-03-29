@@ -11,10 +11,12 @@ to this game.
 > import Control.Arrow(first,(***))
 > import Control.Applicative((<|>))
 > import Data.List(foldl', nub, partition, sortOn, tails)
+> import Data.Either(partitionEithers)
 > import Data.Maybe(listToMaybe, fromJust)
 > import Game.Chess.TimeTravel.Utils
 > import Game.Chess.TimeTravel.Moves
 > import Game.Chess.TimeTravel.Printing (drawState,displayMoveSet)
+> import Game.Chess.TimeTravel.Matching
 
 Datatypes in particular are worth looking at - this is where the basic types
 used throughout this application are described.
@@ -55,11 +57,11 @@ remainder.
 
 > search :: Info -> SearchSpace -> [MoveSet]
 > search info remaining =
->   case takePoint remaining of
+>   case takePoint info remaining of
 >     Nothing -> []
->     (Just x) -> case findProblems info x of
->       [] -> makeMoveset x : search info (removePoint info x remaining)
->       (reason:_) -> search info (remove info reason remaining)
+>     Just (x, remaining') -> case findProblems info x of
+>       [] -> makeMoveset x : search info (removePoint info x remaining')
+>       (reason:_) -> search info (remove info reason remaining')
 
 Note: There are many good reasons to remove points, most of which can sometimes
 remove large numbers of points. One important thing here is that we only remove
@@ -93,7 +95,7 @@ things like building the moveset.
 
 > data AxisLoc =
 >     Phy Board Move -- full move data for a physical move (within one board)
->   | Arrive Board Coords Coords -- (origin of creating piece) (landing location (not counting jump))
+>   | Arrive Board Coords Coords (Int,Int) -- (origin of creating piece) (landing location (not counting jump)) (axis of creating piece, index of corresponding move)
 >   | Leave Board Coords -- origin of leaving piece -- (could just use (x,y) but this is easier)
 >   | Pass (Int,Int) -- l,t of passing board. These should not be inspected passes on newly created timelines, since the t coordinate is not well defined.
 >    deriving (Eq)
@@ -127,8 +129,42 @@ represent a union.
 
 'takePoint' finds a point from the first hypercuboid in a list which contains one.
 
-> takePoint :: HCs a -> Maybe [(Int,a)]
-> takePoint hcs = foldr (\ hc rest -> mapM listToMaybe hc <|> rest) Nothing hcs
+It makes sure that jumps match leaves
+
+> takePoint :: Info -> SearchSpace -> Maybe ([(Int,AxisLoc)], SearchSpace)
+> takePoint info [] = Nothing
+> takePoint info@(Info _ nP lmp _) (hc:hcs) = if any null hc then takePoint info hcs else let
+>     (pbs,allbrs) = splitAt nP hc
+>     (brs,passbrs) = break (isPass.snd.head) allbrs
+>     nonJumps = [filter (not.(isLeave ^||^ isArrive).snd) axis | axis <- pbs]
+>     needed = [ax | (ax,n) <- zip [0..]  nonJumps, null n] ++ [nP .. nP+length brs-1] -- timelines that must be involved in some jump
+>     unneeded = [ (ax,h) | (ax,n) <- zip [0..] nonJumps, (h:rs)<-[n]] ++ zip [nP+length brs .. ] (map head passbrs) -- timelines that can do things other than jump
+>
+>     axes = pbs ++ brs
+>     --numberedAxes = zip [0..] axes
+>     leaves = map (filter (isLeave.snd)) axes
+>     getEdges :: Maybe Int -> [(Int,AxisLoc)] -> [((Int,Int),(Int,AxisLoc))]
+>     getEdges seen (pt@(n,Arrive _ _ _ (ax,m)):xs) = if seen == Just ax then getEdges seen xs else ((ax,m),pt):getEdges (Just ax) xs
+>     getEdges seen (_:xs) = getEdges seen xs
+>     getEdges seen [] = []
+>     es = map (getEdges Nothing) axes
+>     --bad = [ (ax,m) | (ax,(m,_))<-concat es, not (m `elem` leaves!!ax)]
+>     --edges = [ ((ax,ax'),(m,n)) | (ax',r)<-zip [0..] es, (ax,(m,n))<-r]
+>     lToErr (Just lv) ax' ax m pt = Right [(ax',(ax,pt)), (ax, (ax',(m,lv)) )]
+>     lToErr Nothing   ax' ax m pt = Left (ax,m)
+>     edges = [ lToErr l ax' ax m pt
+>                | (ax',r)<-zip [0..] es, ((ax,m),pt)<-r , l<-[lookup m (leaves!!ax)] ]
+>     (problems, edges') = partitionEithers edges
+>     in if null problems then case constructMatching (concat edges') needed unneeded of
+>          (Just m) -> Just (map snd (sortOn fst m),hc:hcs)
+>          Nothing -> case passbrs of
+>              [] -> takePoint info hcs
+>              (p:rs) -> takePoint info ((pbs ++ brs ++ drop 1 p : rs):hcs)
+>         else takePoint info (map (filter (\ (x,a) -> arriveAxix a `notElem` (map Just problems))) hc  :hcs)
+>              --
+
+
+--foldr (\ hc rest -> mapM listToMaybe hc <|> rest) Nothing hcs
 
 Building the search space
 =========================
@@ -145,17 +181,15 @@ search.
 >   let pbs = playableBoards s
 >       playableTimelines = map fst pbs
 >       newL = getNewL s
->       allLocs = do -- List monad
->         (l,t) <- pbs
->         m <- legalMovesFromBoard s (l,t)
->         toLocs s l newL m (getType pbs m)
+>       allLocs = map (movesFrom s newL pbs) (zip [0..] pbs)
 
 Next we split these up by axis location, remove duplicates within each axis
 (these may arise when a piece can move to other boards in multiple ways), and
 add the possibility of a pass (choosing not to move on a board).
 
->       locsOn l = nub [ loc | (l',loc) <- allLocs, l'==l]
->       nonBranchingAxes = [ locsOn l ++ [Pass (l,t)] | (l,t) <- pbs]
+>       arrives = allLocs >>= snd
+>       arrivesOn l = [ loc | (l',loc) <- arrives, l'==l]
+>       nonBranchingAxes = [ locs ++ arrivesOn l ++ [Pass (l,t)] | ((locs,_),(l,t)) <- zip allLocs pbs]
 
 Note: some of the details here have large performance implications - putting the
 pass at the end gives a speedup by a factor of around 500 on tests/silly.5dpgn
@@ -167,7 +201,7 @@ New branches could appear on different timelines, so we make a copy of the
 axis containing new branches for each timeline that could be created.
 
 >       maxBranches = length$ filter (any isLeave) nonBranchingAxes
->       newBoards = Pass undefined : locsOn newL
+>       newBoards = Pass undefined : arrivesOn newL
 >       branchingAxes = replicate maxBranches newBoards
 
 The info consists of the state without any moves played, the number of playable
@@ -187,25 +221,41 @@ hybercube given as a list of pairs of Ints.
 >    , fullSpace :: HC AxisLoc
 >  }
 
+> movesFrom :: State -> Int -> [(Int,Int)]-> (Int,(Int,Int)) -> ([AxisLoc],[(Int,AxisLoc)])
+> movesFrom s newL pbs (ax,(l,t)) = let
+>     mvs = legalMovesFromBoard s (l,t)
+>     generate :: Int -> Maybe Coords -> [Move] -> ([AxisLoc],[(Int,AxisLoc)])
+>     generate _ _ [] = ([],[])
+>     generate n c (m:ms) = let
+>         ty = getType pbs m
+>         isNewSrc = ty==SameBoard || Just (fst (head m)) /= c
+>         nextN = n + fromEnum isNewSrc
+>         --
+>         locs = toLocs s l newL m (getType pbs m) (ax,nextN)
+>         (fromL,jmps) = partition ((==l).fst) locs
+>         fromL' = [x | isNewSrc, x <- map snd fromL]
+>         in ((fromL' ++) *** (jmps++))
+>            (generate nextN (if ty==SameBoard then c else Just (fst (head m))) ms)
+>     in generate 0 Nothing mvs
 
 In 'toLocs', we split up jumping moves into a source and a destination. Hops
 (moves between active boards) could also be branches, so we create an extra
 location with the destination board associated with the L-index for new
 timelines.
 
-> toLocs :: State -> Int -> Int -> Move -> MoveType -> [(Int,AxisLoc)]
-> toLocs s oldL newL m ty = -- I wish I had a reason to write f oldL
+> toLocs :: State -> Int -> Int -> Move -> MoveType -> (Int,Int) -> [(Int,AxisLoc)]
+> toLocs s oldL newL m ty axix = -- I wish I had a reason to write f oldL
 >   let newboards = foldl' (fullMove' s) [] m in
 >     newboards >>= (\ ((l,t),b) ->
 >       case ty of
 >         SameBoard -> [(l,Phy b m)]
 >         Hop landing -> if l==oldL
 >           then [(l, Leave b (fst$head m))]
->           else let loc = uncurry (Arrive b) (head m)
+>           else let loc = uncurry (Arrive b) (head m) axix
 >                  in [(landing,loc), (newL,loc)]
 >         Branch -> if l==oldL && Just t==getTime s l
 >           then [(l, Leave b (fst$head m))]
->           else [(newL, uncurry (Arrive b) (head m))]
+>           else [(newL, uncurry (Arrive b) (head m) axix)]
 >         _ -> error ("bad movetype"++show ty++"L:"++show oldL++";"++show l ))
 >
 > -- Optimization: consider cases where the present might move separately
@@ -420,7 +470,7 @@ played on. There are 2 ways this can go wrong:
 >   where
 >     (playable,new) = splitAt nP cell
 >     (jumpSrcs,jumpDests) = unzip [(((l,t),ax),((l',t'),ax))
->        | (ax,(ix,loc))<- new, Arrive _ (l,t,_,_) (l',t',_,_) <- [loc]]
+>        | (ax,(ix,loc))<- new, Arrive _ (l,t,_,_) (l',t',_,_) _ <- [loc]]
 >     conflicts = [ (lt,ax,ax')
 >                  | ((lt,ax),rest) <- zip jumpDests (tail$ tails jumpSrcs),
 >                      (lt',ax') <- rest, lt==lt' ]
@@ -497,9 +547,9 @@ depends on this pass, so we must include it in the cross section.
 >     nA = numActive s
 >     activePasses = [((ax,[ix]),t) | (ax,(ix,Pass (l,t))) <- playable , abs l<=nA+length newActive]
 >     mint = minimum [t | (ax,(ix,loc)) <- playable, (l,t) <- [getLTFromLoc loc] , abs l<=nA+length newActive]
->     isBad = any ((==mint).snd) activePasses && all (\(ax,(ix,Arrive _ _ (_,dt,_,_))) -> dt>=mint) newActive
+>     isBad = any ((==mint).snd) activePasses && all (\(ax,(ix,Arrive _ _ (_,dt,_,_) _)) -> dt>=mint) newActive
 >     secs = if isBad
->         then [ XSec (sec:rs++[ filterAxis (isArrive.snd ^&&^ \ (ix,Arrive _ _ (_,dt,_,_))-> (dt>=t)) ax hc | (ax,(ix,loc))<-newActive])
+>         then [ XSec (sec:rs++[ filterAxis (isArrive.snd ^&&^ \ (ix,Arrive _ _ (_,dt,_,_) _)-> (dt>=t)) ax hc | (ax,(ix,loc))<-newActive])
 >           | (sec,t) <- activePasses, t==mint]
 >         else []
 
@@ -514,7 +564,7 @@ Helper functions for working with axis locations:
 
 > instance Show AxisLoc where
 >   show (Phy _ m) = "Phy"++show m
->   show (Arrive _ s t) = "Arrive"++show s++ show t
+>   show (Arrive _ s t _) = "Arrive"++show s++ show t
 >   show (Leave _ m) = "Leave"++show m
 >   show (Pass _) = "Pass"++show "unwilling to display"
 >
@@ -526,11 +576,14 @@ Helper functions for working with axis locations:
 > isPass _ = False
 >
 > arriveSource :: AxisLoc -> Maybe Coords
-> arriveSource (Arrive _ src _) = Just src
+> arriveSource (Arrive _ src _ _) = Just src
 > arriveSource _ = Nothing
 > arriveDest :: AxisLoc -> Maybe Coords
-> arriveDest (Arrive _ _ dest) = Just dest
+> arriveDest (Arrive _ _ dest _) = Just dest
 > arriveDest _ = Nothing
+> arriveAxix :: AxisLoc -> Maybe (Int,Int)
+> arriveAxix (Arrive _ _ _ axix) = Just axix
+> arriveAxix _ = Nothing
 >
 > leaveSource :: AxisLoc -> Maybe Coords
 > leaveSource (Leave _ c)= Just c
@@ -538,14 +591,14 @@ Helper functions for working with axis locations:
 >
 > mBoard :: AxisLoc -> Maybe Board
 > mBoard (Phy b _) = Just b
-> mBoard (Arrive b _ _) = Just b
+> mBoard (Arrive b _ _ _) = Just b
 > mBoard (Leave b _) = Just b
 > mBoard (Pass _) = Nothing
 >
 > getLTFromLoc :: AxisLoc -> (Int, Int)
 > getLTFromLoc (Pass lt) = lt
 > getLTFromLoc (Phy b (((l,t,_,_),_):_)) = (l,t)
-> getLTFromLoc (Arrive b _ (l,t,_,_)) = (l,t)
+> getLTFromLoc (Arrive b _ (l,t,_,_) _) = (l,t)
 > getLTFromLoc (Leave _ (l,t,_,_)) = (l,t)
 
 > makeMoveset :: [(Int,AxisLoc)] -> MoveSet
@@ -555,4 +608,4 @@ Helper functions for working with axis locations:
 >     toMove (Pass _) = []
 >     toMove (Leave _ _) = []
 >     toMove (Phy _ mv) = [mv]
->     toMove (Arrive _ src dest ) = [[(src,dest)]]
+>     toMove (Arrive _ src dest _) = [[(src,dest)]]

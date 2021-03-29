@@ -26,6 +26,7 @@ library
     , Game.Chess.TimeTravel.FastCheckmateTmp
     , Game.Chess.TimeTravel.FastCheckmateSat
     , Game.Chess.TimeTravel.SAT
+    , Game.Chess.TimeTravel.Matching
   build-depends:
       base
     , containers

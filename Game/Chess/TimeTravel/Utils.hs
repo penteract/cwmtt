@@ -160,3 +160,7 @@ snd3 (a,b,c) = b
 infixr 1 ^&&^
 (^&&^) :: Applicative m => m Bool -> m Bool -> m Bool
 (^&&^) = liftA2 (&&)
+
+infixr 1 ^||^
+(^||^) :: Applicative m => m Bool -> m Bool -> m Bool
+(^||^) = liftA2 (||)
