@@ -1,0 +1,18 @@
+8dc503e Search whole axes, not just the parts in the current section (~30% slowdown)
+ M speedtest/runtest.sh
+tests/checkmate/another.5dpgn
+15ms
+tests/checkmate/futures.5dpgn
+5132ms
+tests/checkmate/NP0.5dpgn
+25ms
+tests/checkmate/NP.5dpgn
+17ms
+tests/checkmate/silly.5dpgn
+18ms
+tests/checkmate/small.5dpgn
+6ms
+tests/checkmate/test1.5dpgn
+68ms
+tests/checkmate/wide.5dpgn
+59832ms

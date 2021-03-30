@@ -1,0 +1,44 @@
+2437221 Fix bug in creation of hypercuboid
+M  Game/Chess/TimeTravel/Main.hs
+A  tests/corr1.txt
+A  tests/correctness.sh
+tests/checkmate/another.5dpgn
+11ms
+tests/checkmate/futures.5dpgn
+31ms
+tests/checkmate/NP0.5dpgn
+18ms
+tests/checkmate/NP.5dpgn
+17ms
+tests/checkmate/silly.5dpgn
+19ms
+tests/checkmate/small.5dpgn
+8ms
+tests/checkmate/test1.5dpgn
+24ms
+tests/checkmate/wide.5dpgn
+46ms
+tests/checkmate/another.5dpgn
+11111111
+23ms
+tests/checkmate/futures.5dpgn
+11111111111111111110
+109ms
+tests/checkmate/NP0.5dpgn
+111111111111111111111111111111111111111111111111111111111111111111111111111111111110
+241ms
+tests/checkmate/NP.5dpgn
+111111111111111111111111111111111111111111111111111111111111111111111111111111111111
+240ms
+tests/checkmate/silly.5dpgn
+111111111111111111111111111111111111110
+370ms
+tests/checkmate/small.5dpgn
+1111
+13ms
+tests/checkmate/test1.5dpgn
+111111111111111111110
+108ms
+tests/checkmate/wide.5dpgn
+111111111111111111111111111111111111111111111110
+998ms

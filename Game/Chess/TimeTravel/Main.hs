@@ -10,7 +10,9 @@ import Game.Chess.TimeTravel.Moves
 import Game.Chess.TimeTravel.BuildGame
 import Game.Chess.TimeTravel.Utils
 import Game.Chess.TimeTravel.FastCheckmate
+import qualified Game.Chess.TimeTravel.FastCheckmateSat
 
+import Text.Read(readMaybe)
 import System.Exit
 import System.Environment
 import System.IO
@@ -26,14 +28,15 @@ commands = [
   ,("fastmate",detectCheckmateFast)
   ,("perftest",detectCheckmateAll)
   ,("debug",debug)
+  ,("count",count)
   ]
 
 main = do
   args <- getArgs
-  unless (null$ intersect ["-h","help","--help"] args)
+  unless (length args > 0 && (null$ intersect ["-h","help","--help"] args))
     (usage >> exitSuccess)
   mapM_ (\ (name,command) ->
-     when (args==[name])
+     when (head args==name)
        (command>>exitSuccess)) commands
   usage>>exitFailure
 
@@ -199,3 +202,29 @@ detectCheckmateAll = do
   mapM_ (
     putStr.show .length .take 1 .fastLegalMoveSets.fst
     ) ss
+
+
+
+getAlg ("fast":rs) = (fastLegalMoveSets,rs)
+getAlg ("naive":rs) = (legalMoveSets,rs)
+getAlg ("sat":rs) = (Game.Chess.TimeTravel.FastCheckmate.fastLegalMoveSets,rs)
+getAlg rs = (fastLegalMoveSets,rs)
+
+count :: IO ()
+count = do
+  args' <- getArgs
+  let (fn, args) = getAlg(tail args')
+  let n = case map readMaybe args of
+            (Just m:_) -> m
+            _ -> 1000
+  inp <- getContents
+  let Just (Notated tags mvs rest, _) = parsePGN inp
+      g = getGame tags
+  if null rest then return ()
+    else putStr "Unparsed: " >> print rest
+  let ss = rToListWarn (build g mvs)
+  hSetBuffering stdout NoBuffering
+  mapM_ (
+    putStr.(++" ").show .length .take n .fn .fst
+    ) ss
+  putStrLn ""
