@@ -56,12 +56,16 @@ all points that are illegal for the same reason, and continue searching the
 remainder.
 
 > search :: Info -> SearchSpace -> [MoveSet]
-> search info remaining =
->   case takePoint info remaining of
+> search info space =
+>   case takePoint info space of
 >     Nothing -> []
->     Just (x, remaining') -> case findProblems info x of
->       [] -> makeMoveset x : search info (removePoint info x remaining')
->       (reason:_) -> search info (remove info reason remaining')
+>     Just (x, remainder) -> case findProblems info x of
+>       [] -> makeMoveset x : search info (removePoint info x remainder)
+>       (reason:_) -> search info (remove info reason remainder)
+
+In the process of trying to find a point, we might be able to shrink the search
+space a bit, so when 'takePoint' finds a point, it also returns 'remainder'
+which is guaranteed to contain all of the legal points that 'space' did.
 
 Note: There are many good reasons to remove points, most of which can sometimes
 remove large numbers of points. One important thing here is that we only remove
@@ -130,9 +134,23 @@ represent a union.
 > pp :: SearchSpace -> String
 > pp = unlines . map (unlines . map (\ ax -> show ax))
 
-'takePoint' finds a point from the first hypercuboid in a list which contains one.
+'takePoint' finds a point from a list of hypercuboids. It ensures that only
+points where jumps match leaves are returned, and it sometimes removes parts of
+the search space which wouldn't let that happen. Within a single hypercuboid,
+this constraint can be seen as a graph theory problem:
+Let G be an undirected graph where vertices are axes/timelines and there is an
+edge between ax and ax' if there is a move which leaves ax and creates a new
+board on ax' (this requires points on both axes).
+There is a point within the hypercuboid which statisfies the constraint that
+"arrives match leaves" if and only if there is a matching in G which includes
+all axes that have no non-jumping AxisLocs (passes or physical moves). Since we
+can also maintain the constraint that new timelines are created in order, we
+assume that new timelines that don't have to be created aren't, and if we can't
+find a matching, we know that another timeline must be created (we enforce this
+by removing the 'Pass' from its axis).
 
-It makes sure that jumps match leaves
+The constraint "jumps match leaves" was previously ensured in 'findProblems',
+but the current method is significantly more efficient in hard cases.
 
 > takePoint :: Info -> SearchSpace -> Maybe ([(Int,AxisLoc)], SearchSpace)
 > takePoint info [] = Nothing
@@ -142,17 +160,13 @@ It makes sure that jumps match leaves
 >     nonJumps = [filter (not.(isLeave ^||^ isArrive).snd) axis | axis <- pbs]
 >     needed = [ax | (ax,n) <- zip [0..]  nonJumps, null n] ++ [nP .. nP+length brs-1] -- timelines that must be involved in some jump
 >     unneeded = [ (ax,h) | (ax,n) <- zip [0..] nonJumps, (h:rs)<-[n]] ++ zip [nP+length brs .. ] (map head passbrs) -- timelines that can do things other than jump
->
 >     axes = pbs ++ brs
->     --numberedAxes = zip [0..] axes
 >     leaves = map (filter (isLeave.snd)) axes
 >     getEdges :: Maybe Int -> [(Int,AxisLoc)] -> [((Int,Int),(Int,AxisLoc))]
 >     getEdges seen (pt@(n,Arrive _ _ _ (ax,m)):xs) = if seen == Just ax then getEdges seen xs else ((ax,m),pt):getEdges (Just ax) xs
 >     getEdges seen (_:xs) = getEdges seen xs
 >     getEdges seen [] = []
 >     es = map (getEdges Nothing) axes
->     --bad = [ (ax,m) | (ax,(m,_))<-concat es, not (m `elem` leaves!!ax)]
->     --edges = [ ((ax,ax'),(m,n)) | (ax',r)<-zip [0..] es, (ax,(m,n))<-r]
 >     lToErr (Just lv) ax' ax m pt = Right [(ax',(ax,pt)), (ax, (ax',(m,lv)) )]
 >     lToErr Nothing   ax' ax m pt = Left (ax,m)
 >     edges = [ lToErr l ax' ax m pt
@@ -164,10 +178,7 @@ It makes sure that jumps match leaves
 >              [] -> takePoint info hcs
 >              (p:rs) -> takePoint info ((pbs ++ brs ++ drop 1 p : rs):hcs)
 >         else takePoint info (map (filter (\ (x,a) -> arriveAxix a `notElem` (map Just problems))) hc  :hcs)
->              --
 
-
---foldr (\ hc rest -> mapM listToMaybe hc <|> rest) Nothing hcs
 
 Building the search space
 =========================
@@ -186,17 +197,14 @@ search.
 >       newL = getNewL s
 >       allLocs = map (movesFrom s newL pbs) (zip [0..] pbs)
 
-Next we split these up by axis location, remove duplicates within each axis
-(these may arise when a piece can move to other boards in multiple ways), and
-add the possibility of a pass (choosing not to move on a board).
+Next we split these up by axis location and add the possibility of a pass
+(choosing not to move on a board).
 
 >       arrives = allLocs >>= snd
 >       arrivesOn l = [ loc | (l',loc) <- arrives, l'==l]
 >       nonBranchingAxes = [ locs ++ arrivesOn l ++ [Pass (l,t)] | ((locs,_),(l,t)) <- zip allLocs pbs]
 
-Note: some of the details here have large performance implications - putting the
-pass at the end gives a speedup by a factor of around 500 on tests/silly.5dpgn
-
+Note: some of the details here have large performance implications.
 (TODO: profile the results of different orderings, in particular putting
 physical (same-board) moves first)
 
@@ -224,6 +232,11 @@ hybercube given as a list of pairs of Ints.
 >    , fullSpace :: HC AxisLoc
 >  }
 
+'movesFrom' generates the moves from a particular board, keeping track of the
+Axis location corresponding to the 'Leave' that matches a particular 'Arrive'.
+This returns the moves (physical and leaves) from the specified timeline, and
+separately returns the 'Arrive' along with the timelines they land on.
+
 > movesFrom :: State -> Int -> [(Int,Int)]-> (Int,(Int,Int)) -> ([AxisLoc],[(Int,AxisLoc)])
 > movesFrom s newL pbs (ax,(l,t)) = let
 >     mvs = legalMovesFromBoard s (l,t)
@@ -234,7 +247,6 @@ hybercube given as a list of pairs of Ints.
 >         isNewSrc = ty==SameBoard || Just (fst (head m)) /= (snd <$> c)
 >         nextN = n + fromEnum isNewSrc
 >         thisN = if isNewSrc then n else fst (fromJust c)
->         --
 >         locs = toLocs s l newL m (getType pbs m) (ax,thisN)
 >         (fromL,jmps) = partition ((==l).fst) locs
 >         fromL' = [x | isNewSrc, x <- map snd fromL]
@@ -270,38 +282,38 @@ timelines.
 Removing pieces
 ===============
 
-The most common type of piece we want to remove is a cross section. This is a
+The pieces we want to remove have the shape of slices. By "slice", we mean a
 subhypercuboid defined by a list of axes and subsets of each axis in the list.
 For axes not mentioned, the whole axis is implied.
 
-> type XSec = [(Int,[Int])]
+> type Slice = [(Int,[Int])]
 
 For example, given the hypercuboid
 hc = [[(0,()), (1,()), (2,())]
      ,[(10,()), (11,())]
      ,[(20,()), (21,()), (22,())]] :: HC ()
-The cross section
-xsec = [(0,[0,2]), (2,[21])]
+The slice
+s = [(0,[0,2]), (2,[21])]
 indicates all points where the first coordinate is 0 or 2 and the third
 coordinate is 21. When considered part of the hypercuboid hc, this means the
 same as [(0,[0,2]), (1,[10,11]), (2,[21])]
 
-To make a cross section contining a single point, we can do the following:
+To make a slice contining a single point, we can do the following:
 
-> xSecFromPoint :: [(Int,a)] -> XSec
+> xSecFromPoint :: [(Int,a)] -> Slice
 > xSecFromPoint xs = zip [0..] [[x] | (x,_)<-xs]
 
 
-> cut :: HC a -> XSec -> HCs a
+> cut :: HC a -> Slice -> HCs a
 > cut hc [] = []
-> cut hc (sec:xsec) =
+> cut hc (sec:rest) =
 >   let (withsec,withoutsec) = split hc sec
->     in cut withsec xsec ++ [withoutsec]
+>     in cut withsec rest ++ [withoutsec]
 
 We could add 'withoutsec' to the beginning of the list rather than the end, but
 doing it this way means that the smallest sections end up at the start of the
 list, which should reduce the maximum number of pieces 'search' needs to keep
-track of simultaneously, particularly if the sections being removed are small.
+track of simultaneously, particularly if the slices being removed are small.
 
 On the other hand, putting it at the start would let us be lazier :)
 
@@ -320,55 +332,26 @@ lie within the subset when projected onto the axis, and those which do not.
 > split (ax:axs) (n,l) = let (withsec,withoutsec)=split axs (n-1,l) in
 >   (ax:withsec,ax:withoutsec)
 
-
-We also consider another type of piece which would be inefficient to implement
-as a number of cross sections. This is used to make sure that if a piece
-leaves a timeline, there is exactly one timeline where it arrives. This is
-represented by the subset of the source axis which involves the piece leaving,
-and subsets of each axis where the piece might arrive. 'remove'ing it means
-cutting away all points unless they either don't match any of the subsets (i.e.
-points that have nothing to do with the jump under consideration), or they match
-the first axis, and exactly one of the others.
-
-> data Sec = XSec XSec | ExactlyOne [(Int,[Int])] deriving (Eq,Show)
-
-Note: Perhaps neater way of doing this would be to invert the first subset then
-include it with the others. In this case, we would care about the subset which
-match exactly one axis.
-
 TODO: Consider using indicator functions rather than lists of coordinates (or
 just use a more efficient data structure)
 
-> overlaps :: Sec -> HC AxisLoc -> Bool
-> overlaps (XSec []) hc = True
-> overlaps (XSec ((ax,pts):secs)) hc = any ((`elem` pts).fst) (hc!!ax) && overlaps (XSec secs) hc
-> overlaps (ExactlyOne branches) hc =
->     let inouts =  map ((not.null *** not.null) . split hc) branches
->         outs = zipWith (&&) (scanr ((&&).snd) True (tail inouts)) (scanl (flip ((&&).snd)) True inouts)
->       in or (zipWith ((&&).fst) inouts outs) -- there is at least one axis with nonempty 'in'tersection such that the rest have nonempty 'out'ersection
+> overlaps :: Slice -> HC AxisLoc -> Bool
+> overlaps [] hc = True
+> overlaps ((ax,pts):secs) hc = any ((`elem` pts).fst) (hc!!ax) && overlaps secs hc
 
-> remove :: Info -> Sec -> HCs AxisLoc -> HCs AxisLoc
-> remove info sec hcs = let (overlap,rest) = if isXSec sec then span (overlaps sec) hcs else ([head hcs],tail hcs) in
->     (overlap >>= remove' sec >>= sanity info ) ++ rest
->   where
->     remove' (XSec xsec) hc = cut hc xsec
->     remove'  m@(ExactlyOne branches) hc =
->       let exactlyOne nobranches [] acc = acc -- could be optimized
->           exactlyOne nobranches (j:js) acc =  let (withJ,noJ) = split nobranches j  in
->              exactlyOne noJ js (withJ:map (snd.flip split j) acc)
->       in exactlyOne hc branches []
->     isXSec (XSec _) = True
->     isXSec _ = False
+> remove :: Info -> Slice -> HCs AxisLoc -> HCs AxisLoc
+> remove info sec hcs = let (overlap,rest) =  span (overlaps sec) hcs in
+>     (overlap >>= flip cut sec >>= sanity info ) ++ rest
 
 > removePoint :: Info -> [(Int,a)] -> HCs AxisLoc -> HCs AxisLoc
-> removePoint info p = remove info (XSec (xSecFromPoint p))
+> removePoint info p = remove info (xSecFromPoint p)
 
-When removing a piece from a hypercuboid, we apply some sanity checks to make
+When removing a slice from a hypercuboid, we apply some sanity checks to make
 sure that if a new timeline with l-index l1 must be created (i.e. it cannot be
 'pass'), then new timelines with l-indices less than l1 must be created.
 This assumes that for axes corresponding to newly created timelines, 'Pass'es
 will be at the start. It also gets rid of any empty hypercuboids (those where
-some axis is empty)
+some axis is empty). With the current implem
 
 > sanity :: Info -> HC AxisLoc -> [HC AxisLoc]
 > sanity (Info _ nP _ _) hc = if any null hc then [] else res
@@ -389,27 +372,25 @@ reasons a cell might be illegal:
 - A king can be captured
 - The present isn't moved
 - It doesn't represent a consistent moveset:
-  - there isn't an 'Arrive' matching a 'Leave'
+  - 'Arrive's and 'Leave's don't matching up exactly
   - the order of "branches that could be hops" is inconsistent
     - This includes problems involving cycles
   - an earlier (new) timeline might have a pass while a later one gets created
 
 The last possibility was eliminated by the sanity check, so we don't need to
 worry about it.
-A lot of them could be dealt with by cutting up the hypercuboid before starting.
-I don't believe that should be done because it will often be faster to rule out
-very large pieces before splitting the hypercuboid.
+Ensuring that 'Arrive's match 'Leave's is done as part of 'takePoint'. There may
+be other things which we could ensure at the same time.
 
 We make sure that it represents a consistent moveset before testing for checks
 and ensuring that the present is moved, or we would need to be more careful
 about the assumtions made by the code doing those tests.
 
-> findProblems :: Info -> [(Int,AxisLoc)] -> [Sec]
+> findProblems :: Info -> [(Int,AxisLoc)] -> [Slice]
 > findProblems info@(Info s _ _ _) point =
 >   let cell = zip [0..] point
 >       s' = apply (makeMoveset point) s
->     in arrivalsMatchLeaves info cell s' ++
->       jumpOrderConsistent info cell s' ++
+>     in jumpOrderConsistent info cell s' ++
 >       testPresent info cell s' ++
 >       findChecks info cell s'
 
@@ -429,35 +410,6 @@ coordinate of the cell, using the following shape:
 > filterAxis :: ((Int,a) -> Bool) -> Int -> HC a -> (Int,[Int])
 > filterAxis f ax axes = (ax, map fst $ filter f (axes !! ax))
 
-
-To confirm that there is a bijection between arrives and leaves, we test the
-following:
-- No two arrivals have the same source L-index
-- If there is a board where a piece arrives from l, that piece must leave l
-- If a piece leaves l, it must arrive on some board
-
-> arrivalsMatchLeaves :: Info -> HCell -> State -> [Sec]
-> arrivalsMatchLeaves (Info _ nP lmp hc) cell s = noDups ++ srcMatches ++ mustAppear
->   where
->     arrivals = [(src,cl) | cl@(ax,(ix,loc))<- cell, Just src <- [arriveSource loc]]
->     sortedArrivals = sortOn fst arrivals
->     noDups = [ makeSec c |
->         ((c,(ax,_)),(c',(ax',_))) <- zip sortedArrivals (tail sortedArrivals), c==c'
->       ]
->     srcMatches = [ makeSec c |
->        (c@(l,_,_,_),(ax,_)) <- arrivals,
->        ax' <- [fromJust $ lookup l lmp], Just c /= (leaveSource.snd.snd) (cell!!ax')
->       ]
->     mustAppear = [ makeSec c |
->       (Just c)<- map (leaveSource.snd.snd) cell, c `notElem` map fst arrivals
->      ]
->     makeSec :: Coords -> Sec
->     makeSec c@(l,_,_,_) = let
->       Just ax = lookup l lmp in
->         ExactlyOne ((ax,[ ix | (ix,loc)<-hc!!ax, leaveSource loc /= Just c]):
->           [(ax', [ ix | (ix,loc) <-locs, arriveSource loc==Just c]) | (ax',locs) <- zip [0..] hc, ax'/=ax])
-
-
 Give that there is a bijection between 'Arrive's and 'Leave's, we need to ensure
 that there is some order in which the moves could be applied that results in the
 new state. The order among moves that don't create new branches obviously
@@ -469,7 +421,7 @@ played on. There are 2 ways this can go wrong:
 - If the destination board is the source of a branch which was supposed to
   happen after this one.
 
-> jumpOrderConsistent :: Info -> HCell -> State -> [Sec]
+> jumpOrderConsistent :: Info -> HCell -> State -> [Slice]
 > jumpOrderConsistent (Info _ nP lmp hc) cell s = noArrivesToPass ++ noLeavesAfterArrive
 >   where
 >     (playable,new) = splitAt nP cell
@@ -478,17 +430,17 @@ played on. There are 2 ways this can go wrong:
 >     conflicts = [ (lt,ax,ax')
 >                  | ((lt,ax),rest) <- zip jumpDests (tail$ tails jumpSrcs),
 >                      (lt',ax') <- rest, lt==lt' ]
->     noLeavesAfterArrive = [XSec [filterAxis (\ (_,j) -> Just lt == (fstPair<$>arriveDest j)) ax hc,
+>     noLeavesAfterArrive = [[filterAxis (\ (_,j) -> Just lt == (fstPair<$>arriveDest j)) ax hc,
 >                  filterAxis (\ (_,j) -> Just lt == (fstPair<$>arriveSource j)) ax' hc]
 >            | (lt,ax,ax') <- conflicts]
->     noArrivesToPass = [XSec [(ax,[ix]), filterAxis (\ (_,j) -> Just lt == (fstPair<$>arriveDest j)) ax' hc]
+>     noArrivesToPass = [[(ax,[ix]), filterAxis (\ (_,j) -> Just lt == (fstPair<$>arriveDest j)) ax' hc]
 >         | (ax,(ix,Pass lt)) <- playable, (lt',ax')<-jumpDests, lt==lt']
 
 
 This is almost exactly the same code from the naive search
 ('Game.Chess.TimeTravel.Moves'), it just tracks the boards involved in a check.
 
-> findChecks :: Info -> HCell -> State -> [Sec]
+> findChecks :: Info -> HCell -> State -> [Slice]
 > findChecks (Info oldS _ lmp hc) cell newS@(_,_,_,playerCol) = do
 >   (l,t) <- playableBoards newS
 >   let Just b = getBoard newS (l,t)
@@ -513,12 +465,12 @@ This is almost exactly the same code from the naive search
 >           _ -> []
 >   fixedmoves ++ dirmoves
 
-'fromCells' finds the cross section of a hypercuboid corresponding to movesets
-after which the given cells have the given values.
+'fromCells' finds the slice of a hypercuboid corresponding to movesets after
+which the given cells have the given values.
 (cells here means 4D `squares`, not N-dimensional hypercuboid cells)
 
-> fromCells :: State -> [((Int, Int, Int, Int), Cell)] -> HC AxisLoc -> [(Int, Int)] -> Sec
-> fromCells s@(_,_,_,col) pcs hc lmp = XSec [
+> fromCells :: State -> [((Int, Int, Int, Int), Cell)] -> HC AxisLoc -> [(Int, Int)] -> Slice
+> fromCells s@(_,_,_,col) pcs hc lmp = [
 >   filterAxis (\ (_, j) -> Just cell == (mBoard j >>= flip getAtBoard (x, y))
 >                           &&  nextT (snd (getLTFromLoc j)) col==t) ax hc
 >    | (pos@(l, t, x, y), cell) <- pcs,
@@ -532,7 +484,7 @@ We begin by finding which new timelines will be active when they are created,
 ('newActive') and then check whether there are any passes on active timelines
 (including newly active ones) in the new present.
 
-> testPresent :: Info -> HCell -> State -> [Sec]
+> testPresent :: Info -> HCell -> State -> [Slice]
 > testPresent (Info s@(nw,wtls,btls,col) nP _ hc) cell newS = secs
 >   where
 >     (playable,newBoards) = splitAt nP cell
@@ -543,7 +495,7 @@ We begin by finding which new timelines will be active when they are created,
 
 If 'rest' is non-empty, there is a pass which could become an active timeline
 and so move the present. If we find that the state is illegal, our reasoning
-depends on this pass, so we must include it in the cross section.
+depends on this pass, so we must include it in the slice.
 
 >     rs = case rest of
 >       [] -> []
@@ -553,15 +505,15 @@ depends on this pass, so we must include it in the cross section.
 >     mint = minimum [t | (ax,(ix,loc)) <- playable, (l,t) <- [getLTFromLoc loc] , abs l<=nA+length newActive]
 >     isBad = any ((==mint).snd) activePasses && all (\(ax,(ix,Arrive _ _ (_,dt,_,_) _)) -> dt>=mint) newActive
 >     secs = if isBad
->         then [ XSec (sec:rs++[ filterAxis (isArrive.snd ^&&^ \ (ix,Arrive _ _ (_,dt,_,_) _)-> (dt>=t)) ax hc | (ax,(ix,loc))<-newActive])
+>         then [ (sec:rs++[ filterAxis (isArrive.snd ^&&^ \ (ix,Arrive _ _ (_,dt,_,_) _)-> (dt>=t)) ax hc | (ax,(ix,loc))<-newActive])
 >           | (sec,t) <- activePasses, t==mint]
 >         else []
 
 Note: I feel like there should be a better way to eliminate things that don't
 pass the present to the opponent. Apart from checks which mostly care about
 empty space, (and individual points when it finds a legal moveset) this is the
-only place where we use more than 2 dimensions in a cross section, which means
-it's an opportunity for inefficiency.
+only place where we use more than 2 dimensions in a slice, which means it's an
+opportunity for inefficiency.
 
 
 Helper functions for working with axis locations:

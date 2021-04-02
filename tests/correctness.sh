@@ -9,7 +9,7 @@ CMD=`stack exec which cwmtt`
 for test in tests/checkmate/*.5dpgn
 do
   echo $test
-  if cat $test | timeout $TIMEOUT $CMD count naive
+  if cat $test | timeout $TIMEOUT $CMD count
   then true
   else echo timeout
   fi

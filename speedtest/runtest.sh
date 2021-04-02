@@ -8,7 +8,7 @@ CMD=`stack exec which cwmtt`
 
 function tstmate {
   T=`date +%s%N`
-  cat $test | timeout $TIMEOUT $CMD fastmate > /dev/null
+  cat $test | timeout $TIMEOUT $CMD checkmate > /dev/null
   T="$(($(date +%s%N)-T))"
   echo ${T:0:${#T}-6}ms
 }

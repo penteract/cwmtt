@@ -20,26 +20,6 @@ import Data.List
 import Control.Monad
 import Control.Arrow((>>>))
 
-commands = [
-   ("play",play)
-  ,("convert",convert)
-  ,("test",test)
-  ,("checkmate",detectCheckmate)
-  ,("fastmate",detectCheckmateFast)
-  ,("perftest",detectCheckmateAll)
-  ,("debug",debug)
-  ,("count",count)
-  ]
-
-main = do
-  args <- getArgs
-  unless (length args > 0 && (null$ intersect ["-h","help","--help"] args))
-    (usage >> exitSuccess)
-  mapM_ (\ (name,command) ->
-     when (head args==name)
-       (command>>exitSuccess)) commands
-  usage>>exitFailure
-
   --putStr$ drawState standard (1,[(2,[sb,sb]),(1,[sb])],[(1,[sb]),(0,[])],White)
 debug :: IO ()
 debug =  do
@@ -76,6 +56,25 @@ debug =  do
     putStrLn ""
     ) (zip [1..] ss)
 
+main = do
+  args <- getArgs
+  unless (length args > 0 && (null$ intersect ["-h","help","--help"] args))
+    (usage >> exitSuccess)
+  mapM_ (\ (name,command) ->
+     when (head args==name)
+       (command>>exitSuccess)) commands
+  usage>>exitFailure
+
+commands = [
+   ("play",play)
+  ,("convert",convert)
+  ,("test",test)
+  ,("checkmate",detectCheckmateFast)
+  ,("perftest",detectCheckmateAll)
+  ,("debug",debug)
+  ,("count",count)
+ ]
+
 usage :: IO ()
 usage = putStr $ unlines[
    "usage: cwmtt <command>"
@@ -83,9 +82,11 @@ usage = putStr $ unlines[
   ,"help - print this message"
   ,"play - enter moves and see the board state after each"
   ,"convert - convert moves from my notation to Shad's"
-  ,"checkmate - test if a situation is checkmate"
-  ,"fastmate - quickly test if a situation is checkmate"
-  ,"perftest - test checkmate for all intermediate positions in a game"
+  ,"checkmate [algorithm] - test if a situation is checkmate"
+  ,"perftest [algorithm] - test checkmate for all intermediate positions in a game"
+  ,"count [algorithm] [n] - count the numbers of legal movesets (capped at n)"
+  ,""
+  ,"'algorithm' should be one of \"fast\"(default) \"naive\" and \"sat\""
   ]
 
 play = do
@@ -160,23 +161,11 @@ lengthGT [] _ =  False
 lengthGT (_:xs) 0 = True
 lengthGT (_:xs) n = lengthGT xs (n-1)
 
-detectCheckmate :: IO ()
-detectCheckmate = do
-  inp <- getContents
-  let Just (Notated tags mvs rest, _) = parsePGN inp
-      g = getGame tags
-  if null rest then return ()
-    else putStr "Unparsed: " >> print rest
-  let ss = rToListWarn (build g mvs)
-      (final,_) = last ss
-      lms = legalMoveSets final
-  case lms of
-    [] -> putStrLn "Checkmate"
-    (m:ms) -> putStrLn ("Not checkmate: " ++ displayMoveSet final m)
-
 
 detectCheckmateFast :: IO ()
 detectCheckmateFast = do
+  args' <- getArgs
+  let (fn, args) = getAlg(tail args')
   inp <- getContents
   let Just (Notated tags mvs rest, _) = parsePGN inp
       g = getGame tags
@@ -184,7 +173,7 @@ detectCheckmateFast = do
     else putStr "Unparsed: " >> print rest
   let ss = rToListWarn (build g mvs)
       (final,_) = last ss
-      lms = fastLegalMoveSets final
+      lms = fn final
   case lms of
     [] -> putStrLn "Checkmate"
     (m:ms) -> putStrLn ("Not checkmate: " ++ displayMoveSet final m)
@@ -192,6 +181,8 @@ detectCheckmateFast = do
 
 detectCheckmateAll :: IO ()
 detectCheckmateAll = do
+  args' <- getArgs
+  let (fn, args) = getAlg(tail args')
   inp <- getContents
   let Just (Notated tags mvs rest, _) = parsePGN inp
       g = getGame tags
@@ -200,14 +191,14 @@ detectCheckmateAll = do
   let ss = rToListWarn (build g mvs)
   hSetBuffering stdout NoBuffering
   mapM_ (
-    putStr.show .length .take 1 .fastLegalMoveSets.fst
+    putStr.show .length .take 1 .fn .fst
     ) ss
 
 
 
 getAlg ("fast":rs) = (fastLegalMoveSets,rs)
 getAlg ("naive":rs) = (legalMoveSets,rs)
-getAlg ("sat":rs) = (Game.Chess.TimeTravel.FastCheckmate.fastLegalMoveSets,rs)
+getAlg ("sat":rs) = (Game.Chess.TimeTravel.FastCheckmateSat.fastLegalMoveSets,rs)
 getAlg rs = (fastLegalMoveSets,rs)
 
 count :: IO ()
