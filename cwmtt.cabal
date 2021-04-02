@@ -2,7 +2,6 @@
 
 name:                cwmtt
 version:             0.0.0.0
--- synopsis:
 description:
   A library for working with the game "5D chess with multiverse time travel"
 license:             BSD3

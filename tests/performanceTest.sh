@@ -12,7 +12,7 @@ function tstmate {
   T="$(($(date +%s%N)-T))"
   echo ${T:0:${#T}-6}ms
 }
-for test in tests/checkmate/*.5dpgn
+for test in tests/5dpgn/*.5dpgn
 do
   echo $test
   tstmate
@@ -25,7 +25,7 @@ function tstall {
   echo ""
   echo ${T:0:${#T}-6}ms
 }
-for test in tests/checkmate/*.5dpgn
+for test in tests/5dpgn/*.5dpgn
 do
   echo $test
   tstall
