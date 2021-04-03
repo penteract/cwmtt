@@ -276,11 +276,15 @@ nm =  [ da*(units!!a) + db*(units!!b)  | a <- [0..3], b <- [a+1 .. 3], dx <- [-1
 wpcm =  [ -unitl+unitt, -unitl-unitt, unity+unitx, unity-unitx]
 bpcm = map negate wpcm
 
+wbcm = (unity-unitl): [forward+dir*sideways | forward <- [-unitl,unity], sideways <- [unitx,unitt], dir <- [1,-1]]
+bbcm = map negate wbcm
+
 -- Moves that can continue as far as possible in one direction
 directions :: Piece -> [Vector]
 directions King = []
 directions Knight = []
 directions Pawn = []
+directions Brawn = []
 directions Rook = rm --units ++ map (**** (-1)) units
 directions Bishop = bm -- [ x****(units!!a) ++++ y****(units!!b) | (a,b) <- planes, x <- [1,-1], y <- [1,-1]]
 directions Queen = qm
@@ -304,6 +308,8 @@ fixed _ = []
 fixedCapturing :: Player -> Piece -> [Vector]
 fixedCapturing White Pawn = wpcm
 fixedCapturing Black Pawn = bpcm
+fixedCapturing White Brawn = wbcm
+fixedCapturing Black Brawn = bbcm
 fixedCapturing _ _ = []
 
 pawnDirections :: Player -> [Vector]
@@ -321,6 +327,7 @@ special pos@(l,t,x,y) state@(_,_,_,playerCol) =
       Just (Full (pieceCol,King,Still)) -> map (map (((l,t)|+) *** ((l,t)|+)))
           (castles (x,y) b pieceCol)
       Just (Full (pieceCol,Pawn,moved)) -> pawnmoves pos state moved
+      Just (Full (pieceCol,Brawn,moved)) -> pawnmoves pos state moved
       Just (Full _) -> []
       _ -> error "no piece at given position"
 
@@ -374,9 +381,10 @@ pawnmoves pos state@(_,_,_,playerCol) moved =
     let sq = pos+d
     Just Empty <- [getAt state sq] -- this check is not be needed (unless more complicated moves get added)
     let vdy = (0,0,0,dy)
-    [Just (Full (_,Pawn,Still)), Just Empty,
-     Just Empty, Just (Full (_,Pawn,Moved))] <- return$
+    [Just (Full (_,p,Still)), Just Empty,
+     Just Empty, Just (Full (_,q,Moved))] <- return$
       map (getAt state . (sq +))  [vdy-unitt,-vdy-unitt,vdy,-vdy]
+    True <- [p `elem` [Pawn,Brawn] && p==q]
     return [(pos,sq),(pos,sq-vdy)]
     )
   ++ do -- list monad, non-capturing

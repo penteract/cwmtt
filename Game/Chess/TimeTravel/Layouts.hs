@@ -1,4 +1,4 @@
-module Game.Chess.TimeTravel.Layouts(standard, sb, getGame,makeFrom)
+module Game.Chess.TimeTravel.Layouts(standard, sb, getGame,makeFrom, layouts)
 where
 
 import Game.Chess.TimeTravel.Datatypes
@@ -41,17 +41,19 @@ makeFrom :: Board -> Player -> State
 makeFrom b White = (0,[(1,[b])],[(0,[])],White)
 makeFrom b Black = (0,[(1,[])],[(1,[b])],Black)
 
-standard :: Game
-standard = ((0,[(1,[sb])],[(0,[])],White), (){-[((4,y),(dx,0)) | dx <- [-1,1], y <- [0,7]]-})
-halfReflected :: Game
-halfReflected = ((0,[(1,[hrb])],[(0,[])],White), (){-[((4-(y`div`7),y),(dx,0)) | dx <- [-1,1], y <- [0,7]]-})
-turnZero :: Game
-turnZero = ((0,[(1,[sb])],[(0,[sb])],White), (){-[((4,y),(dx,0)) | dx <- [-1,1], y <- [0,7]]-})
-justPawns :: Game
+standard :: State
+standard = (0,[(1,[sb])],[(0,[])],White)
+halfReflected :: State
+halfReflected = (0,[(1,[hrb])],[(0,[])],White)
+turnZero :: State
+turnZero = (0,[(1,[sb])],[(0,[sb])],White)
+justPawns :: State
 justPawns = single "ppppk/5/5/5/KPPPP"
+justBrawns :: State
+justBrawns = single "wwwwk/5/5/5/KWWWW"
 
-single :: String -> Game
-single s =  ((0,[(1,[fromFEN s])],[(0,[])],White), ())
+single :: String -> State
+single s =  (0,[(1,[fromFEN s])],[(0,[])],White)
 
 
 layouts =
@@ -59,10 +61,14 @@ layouts =
   , ("Standard - Half Reflected",halfReflected)
   , ("Standard - Turn Zero", turnZero)
   , ("Focused - Just Pawns", justPawns)
+  , ("Focused - Just Brawns", justBrawns)
   , ("Focused - Just Kings", single "2k/3/K2")
   ]
 
-getGame :: Map String String -> Game
+getGameFromString :: String -> State
+getGameFromString = fromMaybe standard . flip lookup layouts
+
+getGame :: Map String String -> State
 getGame mp = fromMaybe standard (lookup (findWithDefault "" "Board" mp) layouts)
 
 fromFEN :: String -> Board

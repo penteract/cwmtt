@@ -18,8 +18,8 @@ import Data.Maybe
 --buildGame :: Game -> [MoveSetPartial] -> Either String [State]
 --buildGame g@(initialboards,_) mvsps = rEToList $ getGame g mvsps
 
-buildGame :: Game -> [MoveSetPartial] -> Result String State
-buildGame (st,_) mvsps =
+buildGame :: State -> [MoveSetPartial] -> Result String State
+buildGame st mvsps =
   rscanl applyPartialMoveSet st (zip [1..] mvsps)
 
 
@@ -29,8 +29,8 @@ makeState bs = (0, [(1,[b])|b <- bs], [(0,[])|b<-bs], White)
 applyPartialMoveSet :: State -> (Int, MoveSetPartial) -> Either String State
 applyPartialMoveSet s m = fst <$> concretize s m
 
-build :: Game -> [MoveSetPartial] -> Result String (State,MoveSet)
-build (st,_) msps =
+build :: State -> [MoveSetPartial] -> Result String (State,MoveSet)
+build st msps =
   rscanl (concretize . fst ) (st,undefined) (zip [1..] msps)
 
 

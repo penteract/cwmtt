@@ -10,10 +10,11 @@ import Game.Chess.TimeTravel.Utils
 import Game.Chess.TimeTravel.Moves
 
 
-drawState :: Game -> State -> String
-drawState ((_,b:_,_,_), _) (lastTl, wtls, btls, pl) =
-  let maxturn = maximum [fst t | t <- wtls]
-      timelines = zipWith (drawtlpair 8 (2*maxturn)) wtls btls in
+drawState :: State -> String
+drawState (lastTl, wtls, btls, pl) =
+  let someboard = head $ concat (map snd (wtls ++ btls))
+      maxturn = maximum [fst t | t <- wtls]
+      timelines = zipWith (drawtlpair (length someboard) (2*maxturn)) wtls btls in
       unlines (horizontalConcat timelines)
 
 

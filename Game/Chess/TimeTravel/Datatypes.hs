@@ -4,7 +4,7 @@ module Game.Chess.TimeTravel.Datatypes where
 
 import Game.Chess.TimeTravel.Utils
 
-data Piece = King | Knight | Bishop | Rook | Queen | Pawn | Unicorn | Dragon deriving (Eq)
+data Piece = King | Knight | Bishop | Rook | Queen | Pawn | Unicorn | Dragon | Brawn deriving (Eq)
 
 instance Show Piece where
   show King = "K"
@@ -15,6 +15,7 @@ instance Show Piece where
   show Pawn = "P"
   show Unicorn = "U"
   show Dragon = "D"
+  show Brawn = "W"
 
 data Player = White | Black deriving (Eq)
 
@@ -102,10 +103,6 @@ type Move = [(Coords,Coords)]
 type MoveSet = [Move]
 
 type CastleData = ((Int,Int),(Int,Int))
-
--- Initial state, castle manouvers (a castle is represented as a king position (within a 2d board) and a direction.
--- The king may castle with any rook in that direction (provided that the intervening spaces are empty and neither piece has moved))
-type Game = (State, ())
 
 
 

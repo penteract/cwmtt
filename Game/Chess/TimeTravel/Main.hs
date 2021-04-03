@@ -19,8 +19,9 @@ import System.IO
 import Data.List
 import Control.Monad
 import Control.Arrow((>>>))
+import Data.Maybe (listToMaybe, fromMaybe)
 
-  --putStr$ drawState standard (1,[(2,[sb,sb]),(1,[sb])],[(1,[sb]),(0,[])],White)
+  --putStr$ drawState (1,[(2,[sb,sb]),(1,[sb])],[(1,[sb]),(0,[])],White)
 debug :: IO ()
 debug =  do
   inp <- getContents
@@ -32,7 +33,7 @@ debug =  do
   mapM_ (\(i,(s,_)) -> do
     let lms = legalMoveSets s
     let flms = fastLegalMoveSets s
-    --putStrLn (drawState g s)
+    --putStrLn (drawState s)
     print i
     --print (length (take 1 lms))
     --mapM_ (putStrLn.displayMoveSet s) (sort $ take 1 lms)
@@ -41,7 +42,7 @@ debug =  do
     print (length (take 1 flms))
     mapM_ (putStrLn.displayMoveSet s) (take 1 flms)
     {-when (nl/=nf)(do
-    putStrLn (drawState g s)
+    putStrLn (drawState s)
     print nf
     let nsls = (map (\ x -> (sort x,x)) lms)
     let nsfs = (map (\ x -> (sort x,x)) flms)
@@ -49,7 +50,7 @@ debug =  do
     --print (length nsls,length nsfs) --, length diff)
     mapM_ (putStrLn.displayMoveSet s.snd) (take 100 diff)
     mapM_ (print) (take 100 diff)
-    --putStrLn (drawState g (apply (head diff) s))
+    --putStrLn (drawState (apply (head diff) s))
     error "stop"
     )-}
     --print (lengthGT flms 100)
@@ -80,7 +81,7 @@ usage = putStr $ unlines[
    "usage: cwmtt <command>"
   ,"commands:"
   ,"help - print this message"
-  ,"play - enter moves and see the board state after each"
+  ,"play [layout] - enter moves and see the board state after each"
   ,"convert - convert moves from my notation to Shad's"
   ,"checkmate [algorithm] - test if a situation is checkmate"
   ,"perftest [algorithm] - test checkmate for all intermediate positions in a game"
@@ -90,14 +91,15 @@ usage = putStr $ unlines[
   ]
 
 play = do
-  let s1 = (0,[(1,[sb])],[(0,[])],White)
-  loop 1 standard s1 True
+  args' <- getArgs
+  let s = fromMaybe standard (listToMaybe (tail args') >>= flip lookup layouts)
+  loop 1 s True
 
-loop :: Int -> Game -> State -> Bool -> IO ()
-loop n g s b = do
-  when b $ putStr$ drawState g s
+loop :: Int -> State -> Bool -> IO ()
+loop n s b = do
+  when b $ putStr$ drawState s
   input<-getLine
-  let ta = putStrLn "try again:">>loop n g s False
+  let ta = putStrLn "try again:">>loop n s False
   let k=parseTurn (preproc input)
   print k
   if input=="mate?" then
@@ -109,7 +111,7 @@ loop n g s b = do
       case k of
         Just (msps,"") -> case concretize s (n,msps) of
           Left e -> putStrLn e >> ta
-          Right (s', mvs) -> loop (n+1) g s' True
+          Right (s', mvs) -> loop (n+1) s' True
         Just (_,rs) -> putStrLn ("Incomplete Parse - next chars:"++show rs)>> ta
         Nothing -> putStr "unable to parse move, " >> ta
 
@@ -141,7 +143,7 @@ test = do
   let Just (pm,"") = parseTurn "Nf3"
   putStrLn""
   print pm
-  case concretize (fst standard) (1,pm) of
+  case concretize standard (1,pm) of
     Left e -> putStrLn ("err"++e)
     Right (s,ms) -> putStrLn ("move:"++displayMoveSet s ms)
 
