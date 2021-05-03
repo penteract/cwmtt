@@ -1,4 +1,4 @@
-##Overview:
+## Overview:
 This is pretty similar to Hexicube's notation, but uses symbols more like Shad's. See https://github.com/adri326/5dchess-notation for more info about those.
 
 The biggest innovation is to use lowercase T and L for relative offsets (may be helpful when transcribing games). It is also flexible in various ways, allowing for newlines between moves, omitting turn numbers, etc . It is always permissible to add extra information such as the T or L-index of the starting point of a move¹.
@@ -9,9 +9,9 @@ actionSequence ::= (action ('/' action)*)?
 action ::= turnNumber? move (';' move)* check?
 turnNumber ::= n? ('b'|'w')? ('T' n)? '.'
 move ::= source piece? ('>>'|'>')? dest | '-' | '_' | '<'
-source ::= (n'L')?('T'n)? file? n?
-piece ::= ('K'|'N'|'B'|'R'|'Q'|'P'|'U'|'D')
-dest ::= (n'L'|'l')?('T'|'t'n)? file n
+source ::= (n'L')? ('T'n)? file? n?
+piece ::= 'K'|'N'|'B'|'R'|'Q'|'P'|'U'|'D'
+dest ::= (n 'L'|'l')? ('T'|'t' n)? file n
 file ::= 'a'|'b'|...|'h'
 n ::= '-'? digit digit*
 check ::= '+' | '#'
@@ -21,7 +21,7 @@ Within an action(moveset), unless the L-index of the source of a move is indicat
 
 
 
-##Recommendations:
+## Recommendations:
 These are suggestions to make it easier to read, but they aren't enforced by the parser.
 - If the turn (T-index) of the present is not 1 greater than(for white) or equal to(for black) that of the previous action, indicate it in the turn number.
 - If multiple timelines are created in an action, give the L-index of all moves for that action.
@@ -59,7 +59,7 @@ sample2:
 6.    e3;_;-;d4 / Qe8;-;_;Nf6
 7.    Qh5;-;_;Qd2#
 ```
-##Technical details (incomplete):
+## Technical details (incomplete):
 - If the source timeline of a move is not indicated, it is assumed to be 1 lower than that of the previous move (or the greatest active timeline for the first move in a moveset).
 
 - All whitespace except newlines is ignored. A sequence of consecutive newlines are treated as a single newline. Newlines followed or preceded by ';' are ignored. Other newlines act as '/',  but may be duplicated.
