@@ -186,10 +186,14 @@ removePieceFile 0 (c:f) = (c,Empty:f)
 removePieceFile n (c:f) = second (c:) (removePieceFile (n-1) f)
 
 placePiece :: Cell -> (Int,Int) -> Board -> Board
+placePiece (Full (Black,Pawn,Moved)) (0,0) (f:b) = placePieceFile (Full(Black,Queen,Moved)) 0 f : b
+placePiece (Full (Black,Brawn,Moved)) (0,0) (f:b) = placePieceFile (Full(Black,Queen,Moved)) 0 f : b
 placePiece p (0,y) (f:b) = placePieceFile p y f : b
 placePiece p (x,y) (f:b) = f: placePiece p (x-1,y) b
 
 placePieceFile :: Cell -> Int -> [Cell] -> [Cell]
+placePieceFile (Full (White,Pawn,Moved)) 0 (c:[]) = [Full (White,Queen,Moved)]
+placePieceFile (Full (White,Brawn,Moved)) 0 (c:[]) = [Full (White,Queen,Moved)]
 placePieceFile p 0 (c:f) = p:f
 placePieceFile p y (c:f) = c: placePieceFile p (y-1) f
 
