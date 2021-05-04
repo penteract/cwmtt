@@ -1,0 +1,11 @@
+[Mode "5D"]
+[Board "Misc - Timeline Battleground"]
+1.(-1T1)e1e2 (0T1)b2b3 (1T1)c3c4 / (0T1)Nb5c3 (-1T1)d3e2 (1T1)d5c4 
+2.(1T2)d3c4 (0T2)Nb1c3 (-1T2)d1d2 / (-1T2)c3d2 (0T2)d4c3 (1T2)b5c4 
+3.(1T3)Bb2e5 (0T3)Nd1c3 (-1T3)a1a2 / (-1T3)Bd4>(1T3)d2 (0T3)b4c3 
+4.(1T4)Rd1d2 (0T4)b3a4 (-1T4)c1d2 / (-1T4)Rd5d2 (0T4)e4e3 (1T4)c4b3 
+5.(1T5)Rd2d4 (0T5)d2c3 (-1T5)a2b3 / (1T5)b3c2 (-1T5)Qc4>(0T5)c3 
+6.(1T6)e3e4 (0T6)a2a3 (-1T6)b3a4 / (0T6)Qc3>>(1T5)c2 
+7.(-2T6)Kc1>>(-1T6)c1 / (-2T6)c5d4 (-1T6)Ra5a4 (1T6)c2b1 (2T6)Rd2d1 
+8.(2T7)Kc1>>(1T6)b2 / (3T6)c2b1 
+9.(3T7)Kb2b1 (1T7)Ba2b1 (0T7)Nc1d3 (-1T7)b1b3 (-2T7)e3d4 / (3T7)c5d4 (2T7)Be4b1 (1T7)c5d4 (0T7)Nc5d3 (-2T7)Qc2>(-1T7)c1 

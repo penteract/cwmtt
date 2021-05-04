@@ -1,0 +1,12 @@
+[Mode "5D"]
+[Board "Very Small - Open"]
+
+1. Bb2 / Nxb2
+2. Nxb2 / Kc3
+3. a4 / d1
+4. (0T4)Qa4>>(0T3)b3 / (0T4)Qd1>>x(0T2)b1
+5. (-1T3)Kxb1 / (-1T3)K>>(0T2)c3
+6. (-2T3)R>>(-1T3)b1 / (2T3)B>x(1T3)b3 (-2T3)d1
+7. (-1T4)Kb1>>x(-1T3)b1 / (3T3)d1
+8. (3T4)Nxd1 (1T4)N>(2T4)d2 (-2T4)Nxd1 /
+   (3T4)Rc1 (1T4)K>x(2T4)d2 (-1T4)Rc2 (-2T4)Kc3d3

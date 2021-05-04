@@ -51,10 +51,17 @@ justPawns :: State
 justPawns = single "ppppk/5/5/5/KPPPP"
 justBrawns :: State
 justBrawns = single "wwwwk/5/5/5/KWWWW"
+vso :: State
+vso = single "nbrk/3p/P3/KRBN"
+timelineBattleground :: State
+timelineBattleground = multi ["ppppp/5/PPPPP/BBQBB/RRKRR","nnnnn/ppppp/5/PPPPP/NNNNN","rrkrr/bbqbb/ppppp/5/PPPPP"]
+
 
 single :: String -> State
 single s =  (0,[(1,[fromFEN s])],[(0,[])],White)
 
+multi :: [String] -> State
+multi ss = (length ss `div` 2, [(1,[fromFEN s]) | s <- ss],replicate (length ss) (0,[]), White)
 
 layouts =
   [ ("Standard",standard)
@@ -63,6 +70,8 @@ layouts =
   , ("Focused - Just Pawns", justPawns)
   , ("Focused - Just Brawns", justBrawns)
   , ("Focused - Just Kings", single "2k/3/K2")
+  , ("Very Small - Open", vso)
+  , ("Misc - Timeline Battleground", timelineBattleground)
   ]
 
 getGameFromString :: String -> State
