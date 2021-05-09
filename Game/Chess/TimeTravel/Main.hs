@@ -20,6 +20,7 @@ import Data.List
 import Control.Monad
 import Control.Arrow((>>>))
 import Data.Maybe (listToMaybe, fromMaybe)
+import Game.Chess.TimeTravel.BFS (deepen)
 
   --putStr$ drawState (1,[(2,[sb,sb]),(1,[sb])],[(1,[sb]),(0,[])],White)
 debug :: IO ()
@@ -72,8 +73,10 @@ commands = [
   ,("test",test)
   ,("checkmate",detectCheckmateFast)
   ,("perftest",detectCheckmateAll)
+  ,("print",printFinalState)
   ,("debug",debug)
   ,("count",count)
+  ,("bfs",bfs)
  ]
 
 usage :: IO ()
@@ -86,6 +89,8 @@ usage = putStr $ unlines[
   ,"checkmate [algorithm] - test if a situation is checkmate"
   ,"perftest [algorithm] - test checkmate for all intermediate positions in a game"
   ,"count [algorithm] [n] - count the numbers of legal movesets (capped at n)"
+  ,"bfs [algorithm] - see if there's a win nearby (arguably not a bfs)"
+  ,"print - display the game state after a sequence of PGN moves"
   ,""
   ,"'algorithm' should be one of \"fast\"(default) \"naive\" and \"sat\""
   ]
@@ -198,6 +203,20 @@ detectCheckmateAll = do
 
 
 
+printFinalState :: IO ()
+printFinalState = do
+  args' <- getArgs
+  let (fn, args) = getAlg(tail args')
+  inp <- getContents
+  let Just (Notated tags mvs rest, _) = parsePGN inp
+      g = getGame tags
+  if null rest then return ()
+    else putStr "Unparsed: " >> print rest
+  let ss = rToListWarn (build g mvs)
+      (final,_) = last ss
+  putStr$ drawState final
+
+
 getAlg ("fast":rs) = (fastLegalMoveSets,rs)
 getAlg ("naive":rs) = (legalMoveSets,rs)
 getAlg ("sat":rs) = (Game.Chess.TimeTravel.FastCheckmateSat.fastLegalMoveSets,rs)
@@ -221,3 +240,19 @@ count = do
     putStr.(++" ").show .length .take n .fn .fst
     ) ss
   putStrLn ""
+
+bfs :: IO ()
+bfs = do
+  args' <- getArgs
+  let (fn, args) = getAlg (tail args')
+  let n = case map readMaybe args of
+            (Just m:_) -> m
+            _ -> 1000
+  inp <- getContents
+  let Just (Notated tags mvs rest, _) = parsePGN inp
+      g = getGame tags
+  if null rest then return ()
+    else putStr "Unparsed: " >> print rest
+  let ss = rToListWarn (build g mvs)
+  hSetBuffering stdout NoBuffering
+  deepen fn ((fst.last) ss)
