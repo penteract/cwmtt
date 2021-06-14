@@ -1,6 +1,7 @@
 [Mode "5D"]
 [White "GetREKT"]
 [Black "ExilingOnly"]
+[Board "Standard - Turn Zero"]
 [Result "Stuck looking for legal moves"]
 [Date "2021.06.14"]
 [Time "22:15:00"]
