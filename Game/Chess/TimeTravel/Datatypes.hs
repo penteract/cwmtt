@@ -4,7 +4,7 @@ module Game.Chess.TimeTravel.Datatypes where
 
 import Game.Chess.TimeTravel.Utils
 
-data Piece = King | Knight | Bishop | Rook | Queen | Pawn | Unicorn | Dragon | Brawn deriving (Eq)
+data Piece = King | Knight | Bishop | Rook | Queen | Pawn | Unicorn | Dragon | Brawn | RoyalQueen | Commoner deriving (Eq)
 
 instance Show Piece where
   show King = "K"
@@ -16,6 +16,13 @@ instance Show Piece where
   show Unicorn = "U"
   show Dragon = "D"
   show Brawn = "W"
+  show RoyalQueen = "Y"
+  show Commoner = "C"
+
+isRoyal :: Piece -> Bool
+isRoyal King = True
+isRoyal RoyalQueen = True
+isRoyal _ = False
 
 data Player = White | Black deriving (Eq)
 

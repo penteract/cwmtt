@@ -1,17 +1,17 @@
 [Mode "5D"]
 [White "GetREKT"]
 [Black "ExilingOnly"]
-[Board "Standard - Turn Zero"]
 [Result "Stuck looking for legal moves"]
+[Board "Standard - Turn Zero"]
 [Date "2021.06.14"]
 [Time "22:15:00"]
 1.(0T1)Ng1f3 / (0T1)e7e6 
 2.(0T2)b2b3 / (0T2)c7c6 
 3.(0T3)e2e3 / (0T3)Qd8b6 
-4.(0T4)Nf3g5 / (0T4)Qb6>>(0T0)f2 
+4.(0T4)Nf3g5 / (0T4)Qb6>>(0T0)f2
 5.(-1T1)Ke1f2 / (-1T1)Ng8f6 
 6.(-1T2)e2e3 / (-1T2)Nf6>>(-1T1)f4 
 7.(-1T3)Kf2e1 / (-1T3)Ke8>>(0T4)d8 
 8.(-1T4)Qd1f3 / (-1T4)f7f6 
-9.(0T5)Qd1f3 (-1T5)Ng1h3 / (0T5)Ke8>>(0T4)d8 (-1T5)f6>>(0T5)f6 
+9.(0T5)Qd1f3 (-1T5)Ng1h3 / (0T5)Ke8>>(0T4)d8 (-1T5)f6>>(0T5)f6
 10.(-1T6)Qf3f7 (0T6)Qf3f7 / (0T6)Bf8>(-1T6)f7

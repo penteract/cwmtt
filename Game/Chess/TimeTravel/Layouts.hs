@@ -55,7 +55,8 @@ vso :: State
 vso = single "nbrk/3p/P3/KRBN"
 timelineBattleground :: State
 timelineBattleground = multi ["ppppp/5/PPPPP/BBQBB/RRKRR","nnnnn/ppppp/5/PPPPP/NNNNN","rrkrr/bbqbb/ppppp/5/PPPPP"]
-
+reversedRoyalty :: State
+reversedRoyalty = single "rnbycbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBYCBNR"
 
 single :: String -> State
 single s =  (0,[(1,[fromFEN s])],[(0,[])],White)
@@ -66,6 +67,7 @@ multi ss = (length ss `div` 2, [(1,[fromFEN s]) | s <- ss],replicate (length ss)
 layouts =
   [ ("Standard",standard)
   , ("Standard - Half Reflected",halfReflected)
+  , ("Standard - Reversed Royalty",reversedRoyalty)
   , ("Standard - Turn Zero", turnZero)
   , ("Focused - Just Pawns", justPawns)
   , ("Focused - Just Brawns", justBrawns)

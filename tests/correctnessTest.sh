@@ -1,4 +1,4 @@
-TIMEOUT=100
+TIMEOUT=200
 
 git log --oneline -1
 git status -uno --short

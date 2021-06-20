@@ -240,12 +240,12 @@ isKnownCheck s@(_,_,_,playerCol) lt = not$ null do
         d <- directions piece
         ( pos',cell) <- line pos d (getAt s)
         case cell of
-          Full (col,King,_) -> if col /= playerCol then [()] else []
+          Full (col,target,_) -> if isRoyal target && col /= playerCol then [()] else []
           _ -> []
       fixedmoves = do
         d <- fixed piece ++ fixedCapturing pieceCol piece
         case getAt s (pos + d) of
-          Just (Full (col,King,_)) -> if col /= playerCol then [()] else []
+          Just (Full (col,target,_)) -> if isRoyal target && col /= playerCol then [()] else []
           _ -> []
   fixedmoves ++ dirmoves
 
@@ -286,6 +286,7 @@ bbcm = map negate wbcm
 -- Moves that can continue as far as possible in one direction
 directions :: Piece -> [Vector]
 directions King = []
+directions Commoner = []
 directions Knight = []
 directions Pawn = []
 directions Brawn = []
@@ -294,6 +295,7 @@ directions Bishop = bm -- [ x****(units!!a) ++++ y****(units!!b) | (a,b) <- plan
 directions Queen = qm
 directions Unicorn = um
 directions Dragon = dm
+directions RoyalQueen = qm
 
 line :: Num a => a -> a -> (a -> Maybe Cell) -> [(a,Cell)]
 line start delta get = let n = start+delta in
@@ -305,6 +307,7 @@ line start delta get = let n = start+delta in
 -- moves that cannot continue indefinitely
 fixed :: Piece -> [Vector]
 fixed King = qm
+fixed Commoner =qm
 fixed Knight = nm
 fixed _ = []
 

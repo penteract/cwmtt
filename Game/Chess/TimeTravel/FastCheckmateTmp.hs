@@ -277,15 +277,15 @@ findChecks (Info oldS _ lmp) cell newS@(_,_,_,playerCol) hc = do
       dirmoves = do
         d <- directions piece
         let ln = line pos d (getAt newS)
-        Just (pos',Full (col,King,_)) <- [foldr (\ x y -> y <|> Just x) Nothing ln]
-        if col /= playerCol
+        Just (pos',Full (col,target,_)) <- [foldr (\ x y -> y <|> Just x) Nothing ln]
+        if isRoyal target && col /= playerCol
           then return (fromCells oldS ((pos,cl):ln) hc lmp)
           else []
       fixedmoves = do
         d <- fixed piece ++ fixedCapturing pieceCol piece
         case getAt newS (pos + d) of
-          Just c@(Full (col,King,_)) ->
-            if col /= playerCol
+          Just c@(Full (col,target,_)) ->
+            if isRoyal target && col /= playerCol
               then return (fromCells oldS [(pos,cl),(pos+d,c)] hc lmp)
               else []
           _ -> []

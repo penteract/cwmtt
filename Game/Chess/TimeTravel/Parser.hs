@@ -201,6 +201,8 @@ parsePiece ('P':rs) = Just (Pawn,rs)
 parsePiece ('U':rs) = Just (Unicorn,rs)
 parsePiece ('D':rs) = Just (Dragon,rs)
 parsePiece ('W':rs) = Just (Brawn,rs)
+parsePiece ('Y':rs) = Just (RoyalQueen,rs)
+parsePiece ('C':rs) = Just (Commoner,rs)
 parsePiece _ = Nothing
 
 -- leading 0s not allowed

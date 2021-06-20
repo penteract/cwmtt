@@ -76,6 +76,7 @@ commands = [
   ,("print",printFinalState)
   ,("debug",debug)
   ,("count",count)
+  ,("json",printFinalStateJSON)
   ,("bfs",bfs)
  ]
 
@@ -160,7 +161,7 @@ getAll = do
   if iseof then return ""
     else ((s++).('\n':)) <$> getAll -}
 
-fn (Just (Notated _ ms rs, _)) = up rs ms
+-- fn (Just (Notated _ ms rs, _)) = up rs ms
 
 
 lengthGT :: [a] -> Int -> Bool
@@ -217,6 +218,19 @@ printFinalState = do
   putStr$ drawState final
 
 
+printFinalStateJSON :: IO ()
+printFinalStateJSON = do
+  args' <- getArgs
+  let (fn, args) = getAlg(tail args')
+  inp <- getContents
+  let Just (Notated tags mvs rest, _) = parsePGN inp
+      g = getGame tags
+  if null rest then return ()
+    else putStr "Unparsed: " >> print rest
+  let ss = rToListWarn (build g mvs)
+      (final,_) = last ss
+  putStr$ toJSON final
+
 getAlg ("fast":rs) = (fastLegalMoveSets,rs)
 getAlg ("naive":rs) = (legalMoveSets,rs)
 getAlg ("sat":rs) = (Game.Chess.TimeTravel.FastCheckmateSat.fastLegalMoveSets,rs)
@@ -256,3 +270,10 @@ bfs = do
   let ss = rToListWarn (build g mvs)
   hSetBuffering stdout NoBuffering
   deepen fn ((fst.last) ss)
+
+
+
+g x = fn (x,"d")
+
+fn :: (a,String) -> String
+fn (a,b) = b
