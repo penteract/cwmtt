@@ -1,13 +1,15 @@
+{-# LANGUAGE FlexibleInstances #-}
 module Game.Chess.TimeTravel.Printing
 where
 
 import Game.Chess.TimeTravel.Datatypes
+import Game.Chess.TimeTravel.Utils
+import Game.Chess.TimeTravel.Moves
 
 import Data.Char
 import Data.List
 import Data.Maybe
-import Game.Chess.TimeTravel.Utils
-import Game.Chess.TimeTravel.Moves
+import Control.Arrow
 
 
 drawState :: State -> String
@@ -93,3 +95,33 @@ printPGN = unlines . zipWith (curry displayMoveSetCol) [2..]
   where
     displayMoveSetCol (n,(s@(_,_,_,Black),mv)) = "/" ++ displayMoveSet s mv
     displayMoveSetCol (n,(s@(_,_,_,White),mv)) = show (n`div`2)++"." ++ displayMoveSet s mv
+
+
+
+toJSON :: State -> String
+toJSON (lastTl, wtls, btls, pl) =
+  let --g tl b =
+      --f l (t,boards) = zipWith (g.(:[l])) [t,t-1 ..] boards
+      --wpts = zipWith f  [lastTl,lastTl-1 ..] wtls
+      wpts = map (\ (ix,c) -> [("pos",show ix), ("v", '"':showc c:"\"")]) (toIxList (lastTl,wtls)) in
+        "{\"wpts\":["++ intercalate "," [ "{"++ intercalate "," [ show k++":"++v |(k,v)<-p]++"}" | p <- wpts] ++"]}"
+      {- someboard = head $ concatMap snd (wtls ++ btls)
+      maxturn = maximum [fst t | t <- wtls]
+      timelines = zipWith (drawtlpair (length someboard) (2*maxturn)) wtls btls in
+      unlines (horizontalConcat timelines) -}
+
+class Ixable a
+  where
+    toIxList :: a -> [([Int],Cell)]
+
+instance Ixable Cell
+  where
+    toIxList c = [([],c)]
+
+instance Ixable a => Ixable [a]
+  where
+    toIxList ps = concat $ zipWith (\ p n -> first (n:) <$> toIxList p) ps  [0..]
+
+instance Ixable a => Ixable (Int,[a])
+  where
+    toIxList (n,ps) = concat $ zipWith (\ p n -> first (n:) <$> toIxList p) ps  [n,n-1..]
