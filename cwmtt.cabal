@@ -23,14 +23,14 @@ library
     , Game.Chess.TimeTravel.BuildGame
     , Game.Chess.TimeTravel.FastCheckmate
     , Game.Chess.TimeTravel.FastCheckmateTmp
-    , Game.Chess.TimeTravel.FastCheckmateSat
-    , Game.Chess.TimeTravel.SAT
+--    , Game.Chess.TimeTravel.FastCheckmateSat
+--    , Game.Chess.TimeTravel.SAT
     , Game.Chess.TimeTravel.Matching
     , Game.Chess.TimeTravel.BFS
   build-depends:
       base
     , containers
-    , z3
+--    , z3
   default-language:
     Haskell2010
 

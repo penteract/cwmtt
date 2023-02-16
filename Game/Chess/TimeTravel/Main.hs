@@ -9,8 +9,8 @@ import Game.Chess.TimeTravel.Datatypes
 import Game.Chess.TimeTravel.Moves
 import Game.Chess.TimeTravel.BuildGame
 import Game.Chess.TimeTravel.Utils
-import Game.Chess.TimeTravel.FastCheckmate
-import qualified Game.Chess.TimeTravel.FastCheckmateSat
+import Game.Chess.TimeTravel.FastCheckmateTmp
+-- import qualified Game.Chess.TimeTravel.FastCheckmateSat
 
 import Text.Read(readMaybe)
 import System.Exit
@@ -31,17 +31,24 @@ debug =  do
   if null rest then return ()
     else putStr "Unparsed: " >> print rest
   let ss = rToListWarn (build g mvs)
-  mapM_ (\(i,(s,_)) -> do
+  mapM_ (\(i,(s@(_,_,_,p),moveset)) -> do
     let lms = legalMoveSets s
     let flms = fastLegalMoveSets s
+    let tupToStr (l,t,x,y) = '[':intercalate "," [show l,show (t*2 -1  -(fromEnum (p==Black))), show (7-y), show x] ++"]"
+    let mvToStr ((s,e):_) = "[" ++ tupToStr s ++ "," ++ tupToStr e ++ "]"
+    let mvsetToStr = ('[':) . (++"]") . intercalate "," . map mvToStr . reverse
+    --putStr$ drawState s
+    --mapM_ (\mvst ->
+    putStrLn (if i>1 then mvsetToStr moveset++"," else "")
+    --) flms
     --putStrLn (drawState s)
-    print i
+    --print i
     --print (length (take 1 lms))
     --mapM_ (putStrLn.displayMoveSet s) (sort $ take 1 lms)
     --print (length (nub $ sort $ take 2 flms))
     --print (length flms)
-    print (length (take 1 flms))
-    mapM_ (putStrLn.displayMoveSet s) (take 1 flms)
+    --print (length (take 1 flms))
+    --mapM_ (putStrLn.displayMoveSet s) (take 1 flms)
     {-when (nl/=nf)(do
     putStrLn (drawState s)
     print nf
@@ -55,7 +62,7 @@ debug =  do
     error "stop"
     )-}
     --print (lengthGT flms 100)
-    putStrLn ""
+    --putStrLn ""
     ) (zip [1..] ss)
 
 main = do
@@ -233,7 +240,7 @@ printFinalStateJSON = do
 
 getAlg ("fast":rs) = (fastLegalMoveSets,rs)
 getAlg ("naive":rs) = (legalMoveSets,rs)
-getAlg ("sat":rs) = (Game.Chess.TimeTravel.FastCheckmateSat.fastLegalMoveSets,rs)
+-- getAlg ("sat":rs) = (Game.Chess.TimeTravel.FastCheckmateSat.fastLegalMoveSets,rs)
 getAlg rs = (fastLegalMoveSets,rs)
 
 count :: IO ()

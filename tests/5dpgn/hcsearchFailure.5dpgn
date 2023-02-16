@@ -1,0 +1,21 @@
+[Mode "5D"]
+[Result "*"]
+[Date "2023.02.01"]
+[Time "01:12:23 (+00:00)"]
+[Size "8x8"]
+[White "tesseract"]
+[Black "Opponent"]
+[Board "Standard"]
+1.(0T0)Pe2(0T0)e3 / (0T0)Ng8(0T0)f6 
+2.(0T1)Pb2(0T1)b4 / (0T1)Pd7(0T1)d5 
+3.(0T2)Bc1(0T2)b2 / (0T2)Pc7(0T2)c6 
+4.(0T3)Bb2(0T3)f6 / (0T3)Pg7(0T3)f6 
+5.(0T4)Qd1(0T4)h5 / (0T4)Qd8(0T4)b6 
+6.(0T5)Qh5>>(0T3)f7 / (1T3)Ke8(1T3)f7 
+7.(1T4)Bb2(1T4)f6 / (1T4)Pg7(1T4)f6 
+8.(1T5)Qd1(1T5)h5 / (0T5)Qb6>>(0T0)b6
+9.(-1T1)Pb2(-1T1)b3 / (-1T1)Ng8(-1T1)f6 
+10.(-1T2)Bc1(-1T2)b2 / (-1T2)Pe7(-1T2)e6 
+11.(-1T3)Bf1(-1T3)c4 / (-1T3)Qb6(-1T3)c6 
+12.(-1T4)Bc4(-1T4)e6 / (-1T4)Pf7(-1T4)e6 
+13.(-1T5)Bb2(-1T5)f6 { / (-1T5)Qc6>>(-1T1)g2 }
