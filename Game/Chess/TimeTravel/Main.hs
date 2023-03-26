@@ -10,7 +10,7 @@ import Game.Chess.TimeTravel.Moves
 import Game.Chess.TimeTravel.BuildGame
 import Game.Chess.TimeTravel.Utils
 import Game.Chess.TimeTravel.FastCheckmate
-import qualified Game.Chess.TimeTravel.FastCheckmateSat
+--import qualified Game.Chess.TimeTravel.FastCheckmateSat
 
 import Text.Read(readMaybe)
 import System.Exit
@@ -233,7 +233,7 @@ printFinalStateJSON = do
 
 getAlg ("fast":rs) = (fastLegalMoveSets,rs)
 getAlg ("naive":rs) = (legalMoveSets,rs)
-getAlg ("sat":rs) = (Game.Chess.TimeTravel.FastCheckmateSat.fastLegalMoveSets,rs)
+-- getAlg ("sat":rs) = (Game.Chess.TimeTravel.FastCheckmateSat.fastLegalMoveSets,rs)
 getAlg rs = (fastLegalMoveSets,rs)
 
 count :: IO ()
