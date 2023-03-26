@@ -82,8 +82,10 @@ concretizeMoves s expectedl (MoveFrom m :ms) = do
   let MD p src@(sl,st,sx,sy) jt caps (dl,dt,dx,dy) (lrel,trel) = m
   let l = fromMaybe expectedl sl
   let pbs = playableBoards s
-  t <- lookup l pbs ? "Not a playable timeline: "++show l
-  "Source T-index " +? testIs st t
+  tEnd <- lookup l pbs ? "Not a playable timeline: "++show l
+  let t = fromMaybe tEnd st
+  getBoard s (l,t) ? "Not a playable board"++show (l,t)
+  -- "Source T-index " +? testIs st t
   let dt' = (if trel then (t+) else id) <$> dt
   let dl' = (if lrel then (l+) else id) <$> dl
   let candidates = movesFromBoard s (l,t)

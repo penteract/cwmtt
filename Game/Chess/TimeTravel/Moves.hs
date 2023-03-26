@@ -123,9 +123,8 @@ legalMovesFromBoard s@(_,_,_,playerCol) (l,t) = do
   m <- movesFromBoard s (l,t)
   let t' = nextT t playerCol
       newBoards = foldl' (fullMove' s) [] m in
-    if or (isKnownCheck (halfApply m s) (Just (l,t')) :
-         [isKnownCheck (makeFrom b (other playerCol)) Nothing
-             | nb@((lt),b)<-newBoards, lt/=(l,t')])
+    if or [isKnownCheck (makeFrom b (other playerCol)) Nothing
+             | nb@((lt),b)<-newBoards, lt/=(l,t')]
         then [] else return m
 
 -- | Apply a moveset to a state and change the player
