@@ -7,6 +7,7 @@ import Control.Arrow
 import Control.Monad
 import Data.List
 import Data.Maybe
+import Data.Foldable(toList)
 
 import Game.Chess.TimeTravel.Datatypes
 import Game.Chess.TimeTravel.Utils
@@ -31,7 +32,7 @@ correctTurn :: State -> Bool
 correctTurn s@(nw,wtls,btls,col) =
   let nb = length wtls - nw - 1
       nactive = min nb nw + 1
-      (wtls',btls') = unzip $ take (nw + 1 + nactive) $ drop (nw - nactive) (zip wtls btls)
+      (wtls',btls') = unzip $ take (nw + 1 + nactive) $ drop (nw - nactive) (zip wtls btls) -- TODO: check this (I think take and drop are the wrong way round)
       wt = minimum (map fst wtls')
       bt = minimum (map fst btls')
       in (bt<wt)==(col==White)
@@ -131,8 +132,13 @@ legalMovesFromBoard s@(_,_,_,playerCol) (l,t) = do
 apply :: MoveSet -> State -> State
 apply mvs s = flipPlayer$ foldl' fullMove s mvs
 
+
+-- | Helpful for making boards appear in the right order if rules allow multiple tls to be created by one move
+ltDisagree :: Move -> ((Int,Int),Board) -> Bool
+ltDisagree (((l,t,_,_),_):_) ((l_,t_),_) = l/=l_ || t/=t_
+
 fullMove :: State -> Move -> State
-fullMove s m = foldl' addBoardFull s (foldl' (fullMove' s) [] m)
+fullMove s m = foldl' addBoardFull s (sortOn (ltDisagree m) $ foldl' (fullMove' s) [] m)
 
 -- | Add a board, making a new timeline if needed
 addBoardFull :: State -> ((Int,Int),Board) -> State
@@ -200,6 +206,26 @@ setMoved :: Cell -> Cell
 setMoved (Full (c,p,Still)) = Full (c,p,Moved)
 setMoved x = x
 
+movesFromSquare :: State -> Coords -> [Move]
+movesFromSquare s@(_,_,_,playerCol) pos@(l,t,x,y) = do
+  Just (Full (pieceCol,piece,_)) <- return (getAt s pos)
+  True <- return (pieceCol==playerCol)
+  let dirmoves = do
+        d <- directions piece
+        ( pos',cell) <- line pos d (getAt s)
+        case cell of
+          Full (col,_,_) -> if col /= playerCol then [[(pos,pos')]] else []
+          Empty -> [[(pos,pos')]]
+      fixedmoves = do
+        (capturing, d) <- map ((,) False) (fixed piece)
+                        ++ map ((,) True) (fixedCapturing playerCol piece)
+        case getAt s (pos + d) of
+          Just (Full (col,_,_)) -> if col /= playerCol then [[(pos,pos + d)]] else []
+          Just Empty -> if capturing then [] else [[(pos,pos + d)]]
+          Nothing -> []
+  dirmoves ++ fixedmoves ++ special pos s
+
+
 movesFromBoard :: State -> (Int,Int) -> [Move]
 movesFromBoard s@(_,_,_,playerCol) (l,t) = let Just b = getBoard s (l,t) in
   do
@@ -248,6 +274,32 @@ isKnownCheck s@(_,_,_,playerCol) lt = not$ null do
           _ -> []
   fixedmoves ++ dirmoves
 
+-- Checks if opposing pieces moving from the given board could capture any king
+-- adjusted to work for history clicks
+getKnownCheck :: State -> Maybe (Int,Int) -> Maybe (Coords,Coords)
+getKnownCheck s@(_,_,_,playerCol) lt = listToMaybe do
+  ((l,t),b) <- case lt of
+    Just lt' -> toList (getBoard s lt') >>= (\b -> [(lt',b)])
+    Nothing -> playersBoards s
+  --let Just b = getBoard (upi (putStrLn (drawState standard s) >> print lt >> return s)) (l,t)
+  --let Just b = getBoard s (l,t)
+  (file,x) <- zip b [0..]
+  (Full (pieceCol,piece,_),y) <- zip file [0..]
+  True <- return (pieceCol==playerCol)
+  let pos = (l,t,x,y)
+      dirmoves = do
+        d <- directions piece
+        ( pos',cell) <- line pos d (getAt s)
+        case cell of
+          Full (col,target,_) -> if isRoyal target && col /= playerCol then [(pos,pos')] else []
+          _ -> []
+      fixedmoves = do
+        d <- fixed piece ++ fixedCapturing pieceCol piece
+        case getAt s (pos + d) of
+          Just (Full (col,target,_)) -> if isRoyal target && col /= playerCol then [(pos,pos+d)] else []
+          _ -> []
+  fixedmoves ++ dirmoves
+
 -- note: tw>tb iff the last board in a timeline is white (created by black, white to play)
 playableBoards :: State -> [(Int,Int)]
 playableBoards (n,wtls,btls,col) =
@@ -255,6 +307,13 @@ playableBoards (n,wtls,btls,col) =
     (\ (tw,_) (tb,_) l -> if (tw==tb)/=(col==White) then [(l,tw)] else [] )
      wtls btls [n,n-1..]
 
+playersBoards :: State -> [((Int,Int),Board)]
+playersBoards (n,wtls,_,White) = getBoards n wtls
+playersBoards (n,_,btls,Black) = getBoards n btls
+getBoards :: Int -> [Timeline] -> [((Int,Int),Board)]
+getBoards n wtls = join$ zipWith
+    (\ (tw,wbs) l -> zip (zip (repeat l) [tw,tw-1 ..]) wbs )
+     wtls [n,n-1..]
 
 -- King | Knight | Bishop | Rook | Queen | Pawn | Unicorn | Dragon
 unitl = (1,0,0,0)

@@ -1,4 +1,4 @@
-module Game.Chess.TimeTravel.Layouts(standard, sb, getGame,makeFrom, layouts)
+module Game.Chess.TimeTravel.Layouts(standard, turnZero, sb, getGame,makeFrom, layouts)
 where
 
 import Game.Chess.TimeTravel.Datatypes
@@ -11,7 +11,6 @@ import Data.Char
 
 sr = [Rook,Knight,Bishop,Queen,King,Bishop,Knight,Rook]
 e8 = [Empty | n <- [0..7]]
-
 
 sb = transpose [
       map (\ p -> Full (White,p,Still)) sr
