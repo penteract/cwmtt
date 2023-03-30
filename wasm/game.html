@@ -186,17 +186,19 @@ function addMove(l1,t1,x1,y1, l2,t2,x2,y2){
     mktable()
     return k
 }
-function undo(){
-    if(numMoves>0 && !undobtn.disabled){
-        numMoves -= 1
-        e.changeMoves(ptr,numMoves)
-        mktable()
-        return true
+function undo(override){
+    if(numMoves>0){
+        if (override||!undobtn.disabled){
+            numMoves -= 1
+            e.changeMoves(ptr,numMoves)
+            mktable()
+            return true
+        }
     }
     return false
 }
-function submit(){
-    if(!submitbtn.disabled){
+function submit(override){
+    if(override || !submitbtn.disabled){
         e.submit(ptr,numMoves)
         setTurn(!col)
         scrollBy({left: t1.offsetLeft-t0.offsetLeft,top:0,behavior:"smooth"})
@@ -319,9 +321,8 @@ document.addEventListener("keypress",e=>(e.key=="u")?undo():0)
 const urlSearchParams = new URLSearchParams(window.location.search);
 const params = Object.fromEntries(urlSearchParams.entries());
 if(params["multiplayer"]){
-    document.write('<script src="multiplayer.js" type="text/javascript"><\/script>')
     multiplayer.style.display=""
 }
     </script>
-    <!--<script src="multiplayer.js" type="text/javascript">-->
+    <script src="multiplayer.js" type="text/javascript"></script>
 </html>

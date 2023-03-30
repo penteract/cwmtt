@@ -30,11 +30,13 @@ function setWelcomeTimeout(){
     }
     welcomeState=126
     setTurn(col)
+    testLegal(col)
   }, 3000)
 }
-function hasPermission(){
-  return true;
-  //return (welcomeState==126 && col+1==myType)
+function hasPriority(){
+  //return true;
+  if(!params["multiplayer"]) return true;
+  return (welcomeState==126 && col+1==myType)
 }
 
 let myType = 3 // bitmask of colors not held by other players (1=white,2=black)
@@ -93,7 +95,7 @@ function connect(tag){
   })
   ws.onerror = (x=>console.log("connection error",x))
 }
-//connect(params["multiplayer"])
+if(params["multiplayer"]) connect(params["multiplayer"])
 
 function recieveMessage(arr){
   console.log(arr)
@@ -148,32 +150,32 @@ function recieveMessage(arr){
 
 oldSubmit = submit
 submit = function(nosend){
-  if(!nosend && !hasPermission())return false;
-  oldSubmit()
+  if(!nosend && !hasPriority())return false;
+  oldSubmit(nosend)
   moveHistory.push(new Int8Array([N_SUBMIT]))
-  if(!nosend)ws.send(moveHistory[moveHistory.length-1])
+  if(ws && !nosend)ws.send(moveHistory[moveHistory.length-1])
 }
 oldMove = addMove
 addMove = function(l1,t1,x1,y1, l2,t2,x2,y2,nosend){
-  if(!nosend && !hasPermission())return false;
-  oldMove(l1,t1,x1,y1, l2,t2,x2,y2)
+  if(!nosend && !hasPriority())return false;
+  oldMove(l1,t1,x1,y1, l2,t2,x2,y2,nosend)
   moveHistory.push(new Int8Array([N_MOVE,l1,t1,x1,y1, l2,t2,x2,y2]))
-  if(!nosend)ws.send(moveHistory[moveHistory.length-1])
+  if(ws && !nosend)ws.send(moveHistory[moveHistory.length-1])
 }
 oldUndo = undo
 undo = function(nosend){
-  if(!nosend && !hasPermission())return false;
-  if(oldUndo()){
+  if(!nosend && !hasPriority())return false;
+  if(oldUndo(nosend)){
     moveHistory.pop()
-    if(!nosend)ws.send(new Int8Array([N_UNDO]))
+    if(ws && !nosend)ws.send(new Int8Array([N_UNDO]))
   }
 }
 oldReset = reset
 reset = function(nosend){
   if(myType>0){
-    oldReset()
+    oldReset(nosend)
     moveHistory=[]
-    if(!nosend)ws.send(new Int8Array([N_RESET]))
+    if(ws && !nosend)ws.send(new Int8Array([N_RESET]))
   } else {
     alert("cannot reset as an observer")
   }
@@ -181,8 +183,8 @@ reset = function(nosend){
 oldTestLegal = testLegal
 testLegal = function(newCol){
   oldTestLegal(newCol)
-  isTurn.innerText=(col?"Black":"White")+(hasPermission()?"(you)":"")+" to play"
-  if(!hasPermission()){
+  isTurn.innerText=(col?"Black":"White")+(hasPriority()?"(you)":"")+" to play"
+  if(!hasPriority()){
     undobtn.disabled=true
     submitbtn.disabled=true
   }
