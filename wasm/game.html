@@ -198,7 +198,8 @@ function submit(){
         e.submit(ptr,numMoves)
         setTurn(!col)
         scrollBy({left: t1.offsetLeft-t0.offsetLeft,top:0,behavior:"smooth"})
-        testLegal()}
+        testLegal()
+    }
 }
 function setTurn(toBecomeBlack){
     numMoves=0

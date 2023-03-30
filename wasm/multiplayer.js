@@ -33,12 +33,13 @@ function setWelcomeTimeout(){
   }, 3000)
 }
 function hasPermission(){
+  //return true;
   return (welcomeState==126 && col+1==myType)
 }
 
 let myType = 3 // bitmask of colors not held by other players (1=white,2=black)
 // 0 means observer
-let history = []
+let moveHistory = []
 
 //let numPlayers
 //let movesSinceLast = -1
@@ -58,7 +59,7 @@ function connect(tag){
       gameTag.innerText=tag
       connected = true
       oldReset()
-      history = []
+      moveHistory = []
       myType = 3
       let c = params["col"]
       if(c)c=c.toLowerCase()
@@ -137,7 +138,7 @@ function recieveMessage(arr){
     case N_RESET:
       if(confirm("do you want to reset?")){
         oldReset()
-        history=[]
+        moveHistory=[]
       }
       break;
     default:
@@ -149,21 +150,21 @@ oldSubmit = submit
 submit = function(nosend){
   if(!nosend && !hasPermission())return false;
   oldSubmit()
-  history.push(new Int8Array([N_SUBMIT]))
-  if(!nosend)ws.send(history[history.length-1])
+  moveHistory.push(new Int8Array([N_SUBMIT]))
+  if(!nosend)ws.send(moveHistory[moveHistory.length-1])
 }
 oldMove = addMove
 addMove = function(l1,t1,x1,y1, l2,t2,x2,y2,nosend){
   if(!nosend && !hasPermission())return false;
   oldMove(l1,t1,x1,y1, l2,t2,x2,y2)
-  history.push(new Int8Array([N_MOVE,l1,t1,x1,y1, l2,t2,x2,y2]))
-  if(!nosend)ws.send(history[history.length-1])
+  moveHistory.push(new Int8Array([N_MOVE,l1,t1,x1,y1, l2,t2,x2,y2]))
+  if(!nosend)ws.send(moveHistory[moveHistory.length-1])
 }
 oldUndo = undo
 undo = function(nosend){
   if(!nosend && !hasPermission())return false;
   if(oldUndo()){
-    history.pop()
+    moveHistory.pop()
     if(!nosend)ws.send(new Int8Array([N_UNDO]))
   }
 }
@@ -171,7 +172,7 @@ oldReset = reset
 reset = function(nosend){
   if(myType>0){
     oldReset()
-    history=[]
+    moveHistory=[]
     if(!nosend)ws.send(new Int8Array([N_RESET]))
   } else {
     alert("cannot reset as an observer")
@@ -192,5 +193,13 @@ function popCount(n){
   n = (n&0x33) + ((n&0xcc)>>2)
   return (n&0xf0) + (n&0x0f)
 }
-
+/*
+testdata = [[4,0,1,6,0,0,1,5,2],[6],[4,0,1,6,7,0,1,5,5],[6],[4,0,2,5,2,0,2,3,3],[6],[4,0,2,5,5,0,2,3,4],[6],[4,0,3,3,3,0,3,5,2],[6],[4,0,3,3,4,0,3,5,5],[6],[4,0,4,5,2,0,4,3,3],[6],[4,0,4,5,5,0,4,3,4],[6],[4,0,5,3,3,0,5,5,2],[6],[4,0,5,3,4,0,5,5,5],[6],[4,0,6,5,2,0,6,3,3],[6],[4,0,6,5,5,0,6,3,4],[6],[4,0,7,3,3,0,7,5,2],[6],[4,0,7,3,4,0,7,5,5],[6],[4,0,8,5,2,0,8,3,3],[6],[4,0,8,5,5,0,8,3,4],[6],[4,0,9,3,3,0,9,5,2],[6],[4,0,9,3,4,0,9,5,5],[6],[4,0,10,5,2,0,10,3,3],[6],[4,0,10,5,5,0,10,3,4],[6]]
+os = setup
+setup=function(){
+  os()
+for(let x of testdata){
+  recieveMessage(x)
+}
+}*/
 //connect("test")
