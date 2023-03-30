@@ -58,7 +58,7 @@ executable cwmttwasm
   default-language:
     Haskell2010
   ghc-options:
-    -no-hs-main -optl-mexec-model=reactor "-with-rtsopts=--nonmoving-gc"
+    -no-hs-main -optl-mexec-model=reactor "-with-rtsopts=-H32m"
     "-optl-Wl,--export=hs_init,--export=fib,--export=initMem,--export=submit,--export=changeMoves,--export=boardDataStart,--export=getMovesFromSquare,--export=reset,--export=bar,--export=baz"
 
 -- test-suite tests

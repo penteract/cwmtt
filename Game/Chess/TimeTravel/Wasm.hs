@@ -200,12 +200,23 @@ getMovesFromSquare ptr l t x y = do
 globalState :: IORef State
 globalState = unsafePerformIO (newIORef turnZero)
 
+dat ::[[(Coords,Coords)]]
+dat = [[((0,1,6,0),(0,1,5,2))],[((0,1,6,7),(0,1,5,5))],[((0,2,5,2),(0,2,3,3))],[((0,2,5,5),(0,2,3,4))],[((0,3,3,3),(0,3,5,2))],[((0,3,3,4),(0,3,5,5))],[((0,4,5,2),(0,4,3,3))],[((0,4,5,5),(0,4,3,4))],[((0,5,3,3),(0,5,5,2))],[((0,5,3,4),(0,5,5,5))],[((0,6,5,2),(0,6,3,3))],[((0,6,5,5),(0,6,3,4))],[((0,7,3,3),(0,7,5,2))],[((0,7,3,4),(0,7,5,5))],[((0,8,5,2),(0,8,3,3))],[((0,8,5,5),(0,8,3,4))],[((0,9,3,3),(0,9,5,2))],[((0,9,3,4),(0,9,5,5))],[((0,10,5,2),(0,10,3,3))],[((0,10,5,5),(0,10,3,4))],[((0,11,3,3),(0,11,5,2))]]
+
 foreign export ccall baz :: (Ptr Word8) -> IO Int
 baz ptr = do
+    ptr' <- reset ptr
+    mapM_ (\ms -> do
+        let cs = ms >>= (\(a,b)->[a,b])
+        writeCoords (ptr `plusPtr` inputMovesDataStart) cs
+        changeMoves ptr (length ms)
+        submit ptr (length ms)
+      ) dat
+    return 0
     --nmvs <- toInt <$> (peekByteOff ptr (inputMovesStart) :: IO Word16)
     --mvs@(((l,t,x,y),_):_) <- mapM (\ i -> readMove (ptr `plusPtr` (inputMovesDataStart+i*8) )) [0,1.. nmvs-1]
-    s@(_,_,_,pl) <- readIORef globalState
-    return (if pl==Black then 77 else 88)
+    -- s@(_,_,_,pl) <- readIORef globalState
+    -- return (if pl==Black then 77 else 88)
 
 main :: IO ()
 main = mempty
