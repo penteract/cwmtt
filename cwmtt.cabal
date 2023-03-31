@@ -34,17 +34,17 @@ library
   default-language:
     Haskell2010
 
-executable cwmttcheckmate
-  hs-source-dirs:
-    Game/Chess/TimeTravel
-  main-is:
-    Main.hs
-  build-depends:
-      base
-    , cwmtt
-  other-modules:
-  default-language:
-    Haskell2010
+-- executable cwmttcheckmate
+--   hs-source-dirs:
+--     Game/Chess/TimeTravel
+--   main-is:
+--     Main.hs
+--   build-depends:
+--       base
+--     , cwmtt
+--   other-modules:
+--   default-language:
+--     Haskell2010
 
 executable cwmttwasm
   hs-source-dirs:
@@ -59,7 +59,7 @@ executable cwmttwasm
     Haskell2010
   ghc-options:
     -no-hs-main -optl-mexec-model=reactor "-with-rtsopts=-H32m"
-    "-optl-Wl,--export=hs_init,--export=fib,--export=initMem,--export=submit,--export=changeMoves,--export=boardDataStart,--export=getMovesFromSquare,--export=reset,--export=bar,--export=baz"
+    "-optl-Wl,--export=hs_init,--export=fib,--export=initMem,--export=submit,--export=changeMovesx,--export=boardDataStart,--export=getMovesFromSquare,--export=reset,--export=bar,--export=baz"
 
 -- test-suite tests
 --   type: exitcode-stdio-1.0

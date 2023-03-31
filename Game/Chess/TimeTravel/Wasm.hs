@@ -12,8 +12,8 @@ import Game.Chess.TimeTravel.FastCheckmate
 --import Data.Array.IO
 
 import Foreign.Marshal.Array
-import Foreign.Storable
-import Foreign
+import Foreign.Storable hiding (pokeByteOff)
+import Foreign hiding (pokeByteOff)
 import Data.Word
 import Data.Int
 import Data.Char
@@ -40,6 +40,8 @@ numTimelines = (maxL - minL) + 1
 
 moveSize :: Int
 moveSize = 8
+
+pokeByteOff _ _ _ = return ()
 
 -- Outputs
 
@@ -166,8 +168,8 @@ getStateWithMoves ptr nmvs = do
     --TODO: test moveset legality ((a) not in check (b) moves present?)
     return s'
 
-foreign export ccall changeMoves :: Ptr Word8 -> Int -> IO (Ptr Word8)
-changeMoves ptr nMoves = do
+foreign export ccall changeMovesx :: Ptr Word8 -> Int -> IO (Ptr Word8)
+changeMovesx ptr nMoves = do
     s <- getStateWithMoves ptr nMoves
     writeState s ptr
     
@@ -209,7 +211,7 @@ baz ptr = do
     mapM_ (\ms -> do
         let cs = ms >>= (\(a,b)->[a,b])
         writeCoords (ptr `plusPtr` inputMovesDataStart) cs
-        changeMoves ptr (length ms)
+        changeMovesx ptr (length ms)
         submit ptr (length ms)
       ) dat
     return 0

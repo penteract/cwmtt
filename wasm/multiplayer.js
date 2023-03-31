@@ -211,11 +211,10 @@ function toXsss(cmdlist){
   }
   return "["+res.map(x=>"["+x.join(",")+"]").join(",")+"]"
 }
-/*
 os = setup
 setup=function(){
   os()
   for(let x of testdata){
     recieveMessage(x)
   }
-}*/
+}

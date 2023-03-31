@@ -160,8 +160,8 @@ function setup(){
     setTurn()
     e.reset(ptr)
     mktable()
-    e.baz(ptr)
-    e.reset(ptr)
+    //e.baz(ptr)
+    //e.reset(ptr)
     //addMove(0,1,1,0,0,1,2,2)
     //submit()
 }
@@ -182,7 +182,7 @@ function addMove(l1,t1,x1,y1, l2,t2,x2,y2){
     let items = [l1,t1,x1,y1, l2,t2,x2,y2]
     items.map((el,ix) => movesInputData[numMoves*moveSize+ix]=el)
     numMoves += 1
-    k = e.changeMoves(ptr,numMoves)
+    k = e.changeMovesx(ptr,numMoves)
     mktable()
     return k
 }
@@ -190,7 +190,7 @@ function undo(override){
     if(numMoves>0){
         if (override||!undobtn.disabled){
             numMoves -= 1
-            e.changeMoves(ptr,numMoves)
+            e.changeMovesx(ptr,numMoves)
             mktable()
             return true
         }
@@ -201,7 +201,7 @@ function submit(override){
     if(override || !submitbtn.disabled){
         e.submit(ptr,numMoves)
         setTurn(!col)
-        scrollBy({left: t1.offsetLeft-t0.offsetLeft,top:0,behavior:"smooth"})
+        //scrollBy({left: t1.offsetLeft-t0.offsetLeft,top:0,behavior:"smooth"})
         testLegal()
     }
 }
