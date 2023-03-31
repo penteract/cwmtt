@@ -311,7 +311,7 @@ function testLegal(){
                 check.push([0,1,2,3].map(j=>checkData[i*4+j]))
             }
             for(let sq of check)
-                getById(makeName(col,...sq)).classList.add("check")
+                getById(makeName(!col,...sq)).classList.add("check")
         }
     }
     undobtn.disabled = numMoves<=0
