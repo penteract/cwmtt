@@ -214,7 +214,9 @@ function toXsss(cmdlist){
 os = setup
 setup=function(){
   os()
-  for(let x of testdata){
-    recieveMessage(x)
-  }
+  setTimeout(()=>{ // This gives a better error message than just running it
+    for(let x of testdata){
+      recieveMessage(x)
+    }}, 100
+  )
 }

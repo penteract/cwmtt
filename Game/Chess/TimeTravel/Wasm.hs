@@ -25,7 +25,7 @@ import System.IO.Unsafe(unsafePerformIO)
 
 (^+^) = liftA2 (+)
 foreign export ccall fib :: Int -> IO Int
-fib 0 = return 0
+fib 0 = return 12
 fib 1 = return 1
 fib n = fib (n-1) ^+^ fib (n-2)
 
@@ -94,14 +94,14 @@ boardDataStart = boardShapeStart + boardShapeDataSize
 
 co :: (Num a,Integral b) => b -> a
 co = fromInteger . toInteger
-
 toW8 :: (Integral b) => b -> Word8
 toW8 = co
+{-
 frW8 :: (Ptr Word8)  -> IO Int
 frW8 ptr = co <$> (peek ptr :: IO Word8)
 frI8 :: (Ptr Word8) -> IO Int
 frI8 ptr = co <$> (peekByteOff ptr 0 :: IO Int8)
-
+-}
 toInt :: (Integral b) => b -> Int
 toInt = co
 
@@ -147,12 +147,12 @@ liftA4 :: Applicative f =>
 liftA4 f a b c d = f <$> a <*> b <*> c <*> d
 mapA4 :: Applicative m => (a->m b)-> (a,a,a,a)->m (b,b,b,b)
 mapA4 f (a,b,c,d) = liftA4 (,,,) (f a) (f b) (f c) (f d)
-
+{-
 readPos :: Ptr Word8 -> IO Coords
 readPos ptr = mapA4 (\(f,n) -> f (ptr `plusPtr` n)) ((frI8,0), (frW8,1), (frW8,2), (frW8,3))
 readMove :: Ptr Word8 -> IO (Coords,Coords)
 readMove ptr = liftA2 (,) (readPos ptr) (readPos (ptr `plusPtr` 4))
-
+-}
 applyMvs :: State -> [(Coords,Coords)] -> State
 applyMvs s = foldl' (fullMove) s  . map (getMoveDetails s)
 getMoveDetails :: State -> (Coords,Coords) -> Move
@@ -162,8 +162,10 @@ getMoveDetails s mv@(src,dst) =
 
 getStateWithMoves :: Ptr Word8 -> Int -> IO State
 getStateWithMoves ptr nmvs = do
-    mvs <- mapM (\ i -> readMove (ptr `plusPtr` (inputMovesDataStart+i*8) )) [0,1.. nmvs-1]
-    s <- readIORef globalState
+    -- mvs <- mapM (\ i -> readMove (ptr `plusPtr` (inputMovesDataStart+i*8) )) [0,1.. nmvs-1]
+    s@(n,wtls,btls,p) <- readIORef globalState
+    let tNum =  length (head wtls) + length (head btls) - 2
+    let mvs = dat !! tNum
     let s' = applyMvs s mvs
     --TODO: test moveset legality ((a) not in check (b) moves present?)
     return s'
@@ -172,10 +174,11 @@ foreign export ccall changeMovesx :: Ptr Word8 -> Int -> IO (Ptr Word8)
 changeMovesx ptr nMoves = do
     s <- getStateWithMoves ptr nMoves
     writeState s ptr
-    
+
 foreign export ccall submit :: Ptr Word8 -> Int -> IO (Ptr Word8)
 submit ptr nMoves = do
     s <- flipPlayer <$> getStateWithMoves ptr nMoves
+    print "hello"
     writeIORef globalState s
     writeState s ptr
     --return ptr

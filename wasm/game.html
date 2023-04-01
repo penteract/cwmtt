@@ -5,8 +5,40 @@
         <script type="module" id="mod">
 // https://github.com/bjorn3/browser_wasi_shim
 // MIT license
-import WASI from "./dist/wasi.js"
-const wasi = new WASI([], [], []);
+import {WASI,File}from "./dist/index.js"
+//import File from "./dist/fs_core.js"";
+    import { Fd } from "../dist/fd.js";
+
+    var term = {
+        open:()=>{},
+        convertEol: true,
+    };
+    term.open(document.getElementById('terminal'));
+
+    class XtermStdio extends Fd {
+        /*:: term: Terminal*/
+
+        constructor(term/*: Terminal*/) {
+            super();
+            this.term = term;
+        }
+        fd_write(view8/*: Uint8Array*/, iovs/*: [wasi.Iovec]*/)/*: {ret: number, nwritten: number}*/ {
+            let nwritten = 0;
+            for (let iovec of iovs) {
+                console.log(iovec.buf_len, iovec.buf_len, view8.slice(iovec.buf, iovec.buf + iovec.buf_len));
+                let buffer = view8.slice(iovec.buf, iovec.buf + iovec.buf_len);
+                //this.term.writeUtf8(buffer);
+                nwritten += iovec.buf_len;
+            }
+            return { ret: 0, nwritten };
+        }
+    }
+    let fds = [
+    new File([]), // stdin
+    new File([]), // stdout
+    new File([])] // stderr
+
+const wasi = new WASI([],[],fds);
 console.log(wasi)
 const wasiImportObj = { wasi_snapshot_preview1: wasi.wasiImport };
 WebAssembly.instantiateStreaming(fetch("cwmttwasm.wasm"), wasiImportObj).then(
@@ -16,8 +48,15 @@ WebAssembly.instantiateStreaming(fetch("cwmttwasm.wasm"), wasiImportObj).then(
         results.instance.exports.hs_init()
         window.e = wasi.inst.exports
         window.ptr = window.e.initMem()
+        console.log(e.fib(0))
         console.log(results,ptr)
-        setup()
+        //setup()
+  setTimeout(()=>{ // This gives a better error message than just running it
+    for(let i=0;i<2;i++){
+      //e.changeMovesx(ptr)
+      e.submit(ptr)
+    }
+    })
     }
 )
         </script>
@@ -100,6 +139,7 @@ body{
         </style>
     </head>
     <body>
+<div id="terminal"></div>
         <div id="buttons">
             <button onclick="undo()" id="undobtn">undo</button>
             <button onclick="submit()" id="submitbtn">submit</button>
@@ -155,7 +195,7 @@ boardShapeStart = checkDataStart + checkDataSize
 boardDataStart = boardShapeStart + boardShapeDataSize
 function setup(){
     //e.bar(ptr)
-    makeBuffers(e.memory.buffer)
+    makeBuffers(new Uint8Array(new Array(initMemSize).fill(0) ) ) //e.memory.buffer)
     selected=undefined
     setTurn()
     e.reset(ptr)
@@ -176,7 +216,7 @@ function makeBuffers(mem){
     checkData = new Int8Array (mem, ptr+checkDataStart, checkDataSize)
     minLmaxL = new Int8Array (mem, ptr+boardShapeStart, 2)
     timelineBounds = new Uint8Array (mem, ptr+boardShapeStart+2, boardShapeDataSize-2)
-    boardData = new Uint8Array(e.memory.buffer, ptr+boardDataStart, numCells)
+    boardData = new Uint8Array(mem, ptr+boardDataStart, numCells)
 }
 function addMove(l1,t1,x1,y1, l2,t2,x2,y2){
     let items = [l1,t1,x1,y1, l2,t2,x2,y2]
@@ -273,7 +313,7 @@ function mktable(){
             tBlack = t%2
             T = (t/2)|0
             board=document.createElement("table")
-            for(let y=0;y<8;y++){
+            for(let y=7;y>=0;y--){
                 row=document.createElement("tr")
                 for(let x=0;x<8;x++){
                     cell = document.createElement("td")
