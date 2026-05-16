@@ -33,6 +33,8 @@ library
 --    , z3
   default-language:
     Haskell2010
+  ghc-options:
+   -Wno-x-partial
 
 executable cwmtt
   hs-source-dirs:
@@ -45,6 +47,8 @@ executable cwmtt
   other-modules:
   default-language:
     Haskell2010
+  ghc-options:
+   -Wno-x-partial
 
 
 
