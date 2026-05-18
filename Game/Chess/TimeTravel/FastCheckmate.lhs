@@ -335,23 +335,44 @@ lie within the subset when projected onto the axis, and those which do not.
 TODO: Consider using indicator functions rather than lists of coordinates (or
 just use a more efficient data structure)
 
-> overlaps :: Slice -> HC AxisLoc -> Bool
-> overlaps [] hc = True
-> overlaps ((ax,pts):secs) hc = any ((`elem` pts).fst) (hc!!ax) && overlaps secs hc
+
+> removePoint :: Info -> [(Int,a)] -> HCs AxisLoc -> HCs AxisLoc
+> removePoint info p = remove info (xSecFromPoint p)
 
 > remove :: Info -> Slice -> HCs AxisLoc -> HCs AxisLoc
 > remove info sec hcs = let (overlap,rest) =  span (overlaps sec) hcs in
 >     (overlap >>= flip cut sec >>= sanity info ) ++ rest
-
-> removePoint :: Info -> [(Int,a)] -> HCs AxisLoc -> HCs AxisLoc
-> removePoint info p = remove info (xSecFromPoint p)
 
 When removing a slice from a hypercuboid, we apply some sanity checks to make
 sure that if a new timeline with l-index l1 must be created (i.e. it cannot be
 'pass'), then new timelines with l-indices less than l1 must be created.
 This assumes that for axes corresponding to newly created timelines, 'Pass'es
 will be at the start. It also gets rid of any empty hypercuboids (those where
-some axis is empty). With the current implem
+some axis is empty).
+
+The current implementation tries to be slightly clever about how it removes
+slices from a stack of hypercuboids. It goes down the stack until it finds one
+which does not intersect the slice, and removes the slice from all the
+hypercuboids it has looked at. This tries to balance a few things:
+
+It doesn't want to waste time finding the same problem (i.e. the same slice)
+in lots of differet pieces.
+
+It doesn't want to waste time trying to remove a tiny slice from lots of
+hypercuboids that don't overlap it.
+
+Only splitting hypercuboids near the top of the stack reduces memory usage.
+
+
+It's quite possible that there's a better heuristic, (e.g. don't stop looking
+down the stack if the current slice involves less than 4 dimensions and has
+overlapped with 90% of hypercuboids checked so far). This would need
+profiling; it could affect the order in which slices are removed from
+hypercuboids, so the impact on performance is very unpredictable.
+
+> overlaps :: Slice -> HC AxisLoc -> Bool
+> overlaps [] hc = True
+> overlaps ((ax,pts):secs) hc = any ((`elem` pts).fst) (hc!!ax) && overlaps secs hc
 
 > sanity :: Info -> HC AxisLoc -> [HC AxisLoc]
 > sanity (Info _ nP _ _) hc = if any null hc then [] else res
